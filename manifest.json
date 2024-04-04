@@ -1,0 +1,30 @@
+{
+    "manifest_version": 3,
+    "name": "Sports Tracker",
+    "version": "1.0",
+    "description": "Resultados Picture in Picture",
+    "action": {
+      "default_popup": "popup.html",
+      "default_icon": {
+        "16": "icon-16.png",
+        "48": "icon-48.png",
+        "128": "icon-128.png"
+      }
+    },
+    "permissions": [
+      "activeTab",
+      "scripting"
+    ],
+    "background": {
+      "service_worker": "background.js"
+    },
+    "icons": {
+      "16": "icon-16.png",
+      "48": "icon-48.png",
+      "128": "icon-128.png"
+    },
+    "action": {
+      "default_popup": "popup.html"
+    }
+  }
+  
