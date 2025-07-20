@@ -1,0 +1,14 @@
+C:\Users\anoca\Documents\GitHub\sports-extension\SportsOverlayApp\obj\Debug\net9.0-windows7.0\SportsOverlayApp.csproj.AssemblyReference.cache
+C:\Users\anoca\Documents\GitHub\sports-extension\SportsOverlayApp\obj\Debug\net9.0-windows7.0\Views\MainWindow.baml
+C:\Users\anoca\Documents\GitHub\sports-extension\SportsOverlayApp\obj\Debug\net9.0-windows7.0\Views\SettingsWindow.baml
+C:\Users\anoca\Documents\GitHub\sports-extension\SportsOverlayApp\obj\Debug\net9.0-windows7.0\App.baml
+C:\Users\anoca\Documents\GitHub\sports-extension\SportsOverlayApp\obj\Debug\net9.0-windows7.0\Views\MainWindow.g.cs
+C:\Users\anoca\Documents\GitHub\sports-extension\SportsOverlayApp\obj\Debug\net9.0-windows7.0\Views\SettingsWindow.g.cs
+C:\Users\anoca\Documents\GitHub\sports-extension\SportsOverlayApp\obj\Debug\net9.0-windows7.0\App.g.cs
+C:\Users\anoca\Documents\GitHub\sports-extension\SportsOverlayApp\obj\Debug\net9.0-windows7.0\SportsOverlayApp_MarkupCompile.cache
+C:\Users\anoca\Documents\GitHub\sports-extension\SportsOverlayApp\obj\Debug\net9.0-windows7.0\SportsOverlayApp.g.resources
+C:\Users\anoca\Documents\GitHub\sports-extension\SportsOverlayApp\obj\Debug\net9.0-windows7.0\SportsOverlayApp.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\anoca\Documents\GitHub\sports-extension\SportsOverlayApp\obj\Debug\net9.0-windows7.0\SportsOverlayApp.AssemblyInfoInputs.cache
+C:\Users\anoca\Documents\GitHub\sports-extension\SportsOverlayApp\obj\Debug\net9.0-windows7.0\SportsOverlayApp.AssemblyInfo.cs
+C:\Users\anoca\Documents\GitHub\sports-extension\SportsOverlayApp\obj\Debug\net9.0-windows7.0\SportsOverlayApp.csproj.CoreCompileInputs.cache
+C:\Users\anoca\Documents\GitHub\sports-extension\SportsOverlayApp\obj\Debug\net9.0-windows7.0\SportsOverlayApp.sourcelink.json

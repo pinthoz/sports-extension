@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "dgSpecHash": "Gi/ZxJc+Mwo=",
+  "success": true,
+  "projectFilePath": "C:\\Users\\anoca\\Documents\\GitHub\\sports-extension\\SportsOverlayApp\\SportsOverlayApp.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\anoca\\.nuget\\packages\\newtonsoft.json\\13.0.3\\newtonsoft.json.13.0.3.nupkg.sha512"
+  ],
+  "logs": []
+}
