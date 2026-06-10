@@ -5,6 +5,7 @@
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
     <Nullable>enable</Nullable>
+    <ApplicationIcon>Resources\app.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
@@ -14,5 +15,6 @@
 
   <ItemGroup>
     <Content Include="Resources\scraper.js" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Resources\app.ico" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

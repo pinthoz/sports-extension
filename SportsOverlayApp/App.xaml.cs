@@ -184,6 +184,18 @@ namespace SportsOverlayApp
 
         private System.Drawing.Icon CreateTrayIcon()
         {
+            try
+            {
+                var icoPath = System.IO.Path.Combine(AppContext.BaseDirectory, "Resources", "app.ico");
+                if (System.IO.File.Exists(icoPath))
+                    return new System.Drawing.Icon(icoPath, 16, 16);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Tray icon load error: {ex.Message}");
+            }
+
+            // Fallback: simple drawn icon if app.ico is missing.
             var bitmap = new System.Drawing.Bitmap(16, 16);
             using (var g = System.Drawing.Graphics.FromImage(bitmap))
             {
