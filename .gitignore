@@ -1,0 +1,31 @@
+# Build output
+bin/
+obj/
+publish/
+out/
+*.user
+*.suo
+*.rsuser
+
+# .NET
+TestResults/
+*.nupkg
+
+# JavaScript dependencies
+node_modules/
+package-lock.json
+
+# Local editor and assistant state
+.vscode/
+.vs/
+.idea/
+.claude/
+.gemini/
+
+# OS files
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Logs
+*.log

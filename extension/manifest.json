@@ -23,8 +23,18 @@
       "run_at": "document_idle"
     }
   ],
+  "icons": {
+    "16": "icon-16.png",
+    "48": "icon-48.png",
+    "128": "icon-128.png"
+  },
   "action": {
     "default_popup": "popup.html",
-    "default_title": "FlashScore Starred Tracker"
+    "default_title": "FlashScore Starred Tracker",
+    "default_icon": {
+      "16": "icon-16.png",
+      "48": "icon-48.png",
+      "128": "icon-128.png"
+    }
   }
 }

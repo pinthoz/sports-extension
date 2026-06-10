@@ -1,0 +1,11 @@
+{
+  "name": "sports-extension-dev",
+  "private": true,
+  "description": "Dev utilities for the FlashScore scraper (selector regression test against saved HTML).",
+  "scripts": {
+    "test:scrape": "node tools/test-scrape.js"
+  },
+  "devDependencies": {
+    "puppeteer-core": "^24.0.0"
+  }
+}

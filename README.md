@@ -77,14 +77,37 @@ Right-click the tray icon → **Settings**. You can change:
 SportsOverlayApp/          .NET 9 WPF app
 ├── Models/                Data models (GameData, UserPreferences)
 ├── Services/              WebSocket server, score parser, local cache
-├── Resources/             FlashScore scraping script, default settings
-├── Utils/                 Theme, notifications, Windows startup
+├── Resources/             FlashScore scraping script (embedded browser)
+├── Utils/                 Notifications, Windows startup
 └── Views/                 Overlay window, settings, FlashScore picker
 extension/                 Chromium extension (Manifest V3)
 ├── content.js             Scrapes starred games from FlashScore pages
 ├── background.js          Updates the toolbar badge with the first score
 ├── popup.html/js          Extension popup (port config, status)
 └── manifest.json          Extension manifest
+tools/                     Dev utilities (selector regression test)
+```
+
+## Development
+
+The scrapers live or die by FlashScore's CSS selectors. When they break, use the
+selector regression test instead of debugging blind in the browser:
+
+```powershell
+npm install            # once — pulls puppeteer-core (drives your installed Chrome/Edge)
+npm run test:scrape    # scrapes tools/test-row.html and prints the extracted JSON
+```
+
+`tools/test-row.html` holds a real match row captured from DevTools. To update it,
+right-click a starred row on FlashScore → Inspect → copy outer HTML, paste it into
+that file, then run the test and adjust the selectors in **both**
+`extension/content.js` and `SportsOverlayApp/Resources/scraper.js`.
+
+To build a standalone exe (no .NET install needed on the target machine):
+
+```powershell
+dotnet publish SportsOverlayApp -c Release -r win-x64 --self-contained `
+  -p:PublishSingleFile=true -o publish
 ```
 
 ## Known quirks
