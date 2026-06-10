@@ -17,8 +17,6 @@ namespace SportsOverlayApp.Utils
 
         public static void ShowToast(string title, string message)
         {
-            // Simple toast notification using MessageBox
-            // In a production app, you might want to use Windows Toast notifications
             MessageBox.Show(message, title, MessageBoxButton.OK, MessageBoxImage.Information);
         }
     }

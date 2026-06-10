@@ -1,0 +1,30 @@
+{
+  "manifest_version": 3,
+  "name": "FlashScore Starred Tracker",
+  "version": "2.0.0",
+  "description": "Streams your starred FlashScore games to the SportsOverlay desktop bar over a local WebSocket.",
+  "permissions": ["storage"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.flashscore.com/*",
+        "*://*.flashscore.pt/*",
+        "*://*.flashscore.es/*",
+        "*://*.flashscore.fr/*",
+        "*://*.flashscore.de/*",
+        "*://*.flashscore.co.uk/*",
+        "*://*.flashscore.info/*",
+        "*://*.livesport.com/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "FlashScore Starred Tracker"
+  }
+}

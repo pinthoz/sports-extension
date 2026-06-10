@@ -1,0 +1,14 @@
+<Window x:Class="SportsOverlayApp.Views.FlashScoreWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
+        Title="FlashScore: star the games you want on the bar"
+        Height="850" Width="1200" WindowStartupLocation="CenterScreen">
+    <DockPanel>
+        <Border DockPanel.Dock="Top" Background="#FF1E1E26" Padding="10,6">
+            <TextBlock Foreground="#CCFFFFFF" FontSize="12" TextWrapping="Wrap"
+                       Text="Star the games you want to follow from any sport or page. Log in to FlashScore to keep your favourites synced. You can close this window; the app keeps reading your games in the background."/>
+        </Border>
+        <wv2:WebView2 x:Name="Browser"/>
+    </DockPanel>
+</Window>

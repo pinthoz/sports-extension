@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <style>
+    body {
+      font-family: "Segoe UI", sans-serif;
+      width: 260px;
+      margin: 0;
+      padding: 14px;
+      background: #16161d;
+      color: #f0f0f5;
+    }
+    h1 { font-size: 14px; margin: 0 0 10px; }
+    .row { display: flex; align-items: center; justify-content: space-between; margin: 8px 0; }
+    label { font-size: 12px; }
+    input[type="number"] {
+      width: 70px;
+      background: #26262f;
+      border: 1px solid #3a3a45;
+      border-radius: 6px;
+      color: inherit;
+      padding: 4px 6px;
+    }
+    #status { display: flex; align-items: center; gap: 6px; font-size: 12px; }
+    #dot { width: 9px; height: 9px; border-radius: 50%; background: #888; }
+    #dot.connected { background: #4caf50; }
+    #dot.disconnected { background: #e53935; }
+    #dot.paused { background: #f9a825; }
+    button {
+      width: 100%;
+      margin-top: 10px;
+      padding: 6px;
+      border: none;
+      border-radius: 6px;
+      background: #3d5afe;
+      color: white;
+      cursor: pointer;
+    }
+    .hint { font-size: 10px; color: #9a9aa5; margin-top: 10px; line-height: 1.4; }
+  </style>
+</head>
+<body>
+  <h1>FlashScore Starred Tracker</h1>
+  <div class="row">
+    <span id="status"><span id="dot"></span><span id="statusText">unknown</span></span>
+  </div>
+  <div class="row">
+    <label for="enabled">Streaming enabled</label>
+    <input type="checkbox" id="enabled" />
+  </div>
+  <div class="row">
+    <label for="port">Desktop app port</label>
+    <input type="number" id="port" min="1024" max="65535" />
+  </div>
+  <button id="save">Save</button>
+  <p class="hint">
+    Keep a FlashScore tab open (logged in, with your games starred) and run the
+    SportsOverlay desktop app. Scores stream to ws://127.0.0.1:&lt;port&gt;.
+  </p>
+  <script src="popup.js"></script>
+</body>
+</html>

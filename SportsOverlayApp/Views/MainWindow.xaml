@@ -1,13 +1,184 @@
 <Window x:Class="SportsOverlayApp.Views.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Sports Overlay" Height="200" Width="400"
-        WindowStyle="None" AllowsTransparency="True" Background="Transparent" Topmost="True">
-    <Grid x:Name="OverlayGrid" Background="Transparent">
-        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
-            <TextBlock x:Name="MatchTitle" FontSize="20" FontWeight="Bold" HorizontalAlignment="Center"/>
-            <TextBlock x:Name="Score" FontSize="30" HorizontalAlignment="Center"/>
-            <TextBlock x:Name="Status" FontSize="14" HorizontalAlignment="Center"/>
+        Title="Sports Overlay" Height="40"
+        WindowStyle="None" AllowsTransparency="True" Background="Transparent"
+        Topmost="True" ShowInTaskbar="False" ResizeMode="NoResize"
+        ShowActivated="False" Focusable="False">
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+
+        <Style x:Key="PillStyle" TargetType="Border">
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Background" Value="#D9181820"/>
+            <Setter Property="BorderBrush" Value="#33FFFFFF"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+
+        <Style x:Key="FlatButton" TargetType="ButtonBase">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#AAFFFFFF"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ButtonBase">
+                        <Border Background="Transparent" Padding="4,0">
+                            <ContentPresenter VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <DataTemplate x:Key="ChipTemplate">
+            <Border CornerRadius="6" Margin="2,4" Padding="7,2" VerticalAlignment="Center">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="Background">
+                            <Setter.Value>
+                                <SolidColorBrush Color="#26FFFFFF"/>
+                            </Setter.Value>
+                        </Setter>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding JustScored}" Value="True">
+                                <DataTrigger.EnterActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <ColorAnimation
+                                                Storyboard.TargetProperty="(Border.Background).(SolidColorBrush.Color)"
+                                                To="#CC43A047" Duration="0:0:0.2"
+                                                AutoReverse="True" RepeatBehavior="3x"/>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </DataTrigger.EnterActions>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding SportIcon}" FontSize="12" Margin="0,0,4,0"
+                               VerticalAlignment="Center"/>
+                    <TextBlock Text="{Binding HomeTeam}" FontSize="11" FontWeight="SemiBold"
+                               Foreground="White" VerticalAlignment="Center"/>
+                    <TextBlock Text="●" FontSize="10" Foreground="#FFFFD54F" Margin="3,0,0,0"
+                               VerticalAlignment="Center" ToolTip="Serving"
+                               Visibility="{Binding ServingHome, Converter={StaticResource BoolToVis}}"/>
+                    <TextBlock Text="{Binding Score}" FontSize="12" FontWeight="Bold"
+                               Foreground="#FFD54F" Margin="6,0" VerticalAlignment="Center"/>
+                    <TextBlock Text="{Binding AwayTeam}" FontSize="11" FontWeight="SemiBold"
+                               Foreground="White" VerticalAlignment="Center"/>
+                    <TextBlock Text="●" FontSize="10" Foreground="#FFFFD54F" Margin="3,0,0,0"
+                               VerticalAlignment="Center" ToolTip="Serving"
+                               Visibility="{Binding ServingAway, Converter={StaticResource BoolToVis}}"/>
+                    <TextBlock Text="{Binding PartsDisplay}" FontSize="12" FontWeight="Bold"
+                               Foreground="#FFDCEBFA" Margin="6,0,0,0" VerticalAlignment="Center">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding PartsDisplay}" Value="">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                    <Border CornerRadius="4" Padding="5,0" Margin="6,1" VerticalAlignment="Center">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Background" Value="#E62E7D32"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding PointsDisplay}" Value="">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <TextBlock Text="{Binding PointsDisplay}" FontSize="12" FontWeight="Bold"
+                                   Foreground="White" VerticalAlignment="Center"/>
+                    </Border>
+                    <TextBlock Text="{Binding Time}" FontSize="10" Margin="5,0,0,0"
+                               VerticalAlignment="Center">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Foreground" Value="#99FFFFFF"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsLive}" Value="True">
+                                        <Setter Property="Foreground" Value="#EF5350"/>
+                                        <Setter Property="FontWeight" Value="Bold"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                    <Button Content="✕" FontSize="10" Margin="4,0,0,0" Style="{StaticResource FlatButton}"
+                            Visibility="{Binding IsFinished, Converter={StaticResource BoolToVis}}"
+                            Click="Dismiss_Click" ToolTip="Remove finished game"/>
+                </StackPanel>
+            </Border>
+        </DataTemplate>
+
+        <ItemsPanelTemplate x:Key="HorizontalPanel">
+            <StackPanel Orientation="Horizontal"/>
+        </ItemsPanelTemplate>
+    </Window.Resources>
+
+    <!-- The window spans the whole taskbar width; everything outside the pills is
+         fully transparent, so clicks there fall through to the taskbar icons. -->
+    <Grid>
+        <StackPanel x:Name="LeftGroup" Orientation="Horizontal"
+                    HorizontalAlignment="Left" VerticalAlignment="Center">
+            <Border x:Name="LeftPill" Style="{StaticResource PillStyle}"
+                    MouseLeftButtonDown="Pill_MouseDown" MouseMove="Pill_MouseMove"
+                    MouseLeftButtonUp="Pill_MouseUp" Tag="left">
+                <ItemsControl x:Name="LeftList" Margin="6,0"
+                              ItemTemplate="{StaticResource ChipTemplate}"
+                              ItemsPanel="{StaticResource HorizontalPanel}"/>
+            </Border>
         </StackPanel>
+
+        <StackPanel x:Name="RightGroup" Orientation="Horizontal"
+                    HorizontalAlignment="Right" VerticalAlignment="Center">
+            <Border x:Name="RightPill" Style="{StaticResource PillStyle}" Margin="0,0,6,0"
+                    MouseLeftButtonDown="Pill_MouseDown" MouseMove="Pill_MouseMove"
+                    MouseLeftButtonUp="Pill_MouseUp" Tag="right">
+                <ItemsControl x:Name="RightList" Margin="6,0"
+                              ItemTemplate="{StaticResource ChipTemplate}"
+                              ItemsPanel="{StaticResource HorizontalPanel}"/>
+            </Border>
+            <Border x:Name="ControlPill" Style="{StaticResource PillStyle}" Padding="6,2"
+                    MouseLeftButtonDown="Pill_MouseDown" MouseMove="Pill_MouseMove"
+                    MouseLeftButtonUp="Pill_MouseUp" Tag="right">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <ToggleButton x:Name="OverflowToggle" Content="^" FontSize="12" FontWeight="Bold"
+                                  Style="{StaticResource FlatButton}" Visibility="Collapsed"
+                                  ToolTip="Choose which games are shown"/>
+                    <Ellipse x:Name="ConnectionDot" Width="9" Height="9" Fill="#E53935" Margin="4,0"/>
+                    <TextBlock x:Name="ConnectionLabel" Text="offline" FontSize="10"
+                               Foreground="#AAFFFFFF" VerticalAlignment="Center" Margin="2,0,0,0"/>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+
+        <Popup x:Name="OverflowPopup" Placement="Top" StaysOpen="False" AllowsTransparency="True"
+               PlacementTarget="{Binding ElementName=OverflowToggle}"
+               IsOpen="{Binding IsChecked, ElementName=OverflowToggle, Mode=TwoWay}">
+            <Border x:Name="PopupPill" Style="{StaticResource PillStyle}" Padding="10,8" Margin="0,0,0,4">
+                <StackPanel>
+                    <TextBlock Text="Shown on the bar:" FontSize="11" Foreground="#AAFFFFFF" Margin="0,0,0,6"/>
+                    <ItemsControl x:Name="PickerList">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <CheckBox IsChecked="{Binding IsShown, Mode=OneWay}" Click="PickerItem_Click"
+                                          Foreground="White" Margin="0,2">
+                                    <TextBlock Text="{Binding Summary}" FontSize="12"/>
+                                </CheckBox>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
+        </Popup>
     </Grid>
 </Window>

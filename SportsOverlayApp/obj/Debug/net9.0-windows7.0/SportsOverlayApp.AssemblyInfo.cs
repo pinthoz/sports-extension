@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("SportsOverlayApp")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+92c52d00999c71f008fcb504b4a1a17441fb1ae8")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+a5d66ce3e122319786af12218486b22e5c017be3")]
 [assembly: System.Reflection.AssemblyProductAttribute("SportsOverlayApp")]
 [assembly: System.Reflection.AssemblyTitleAttribute("SportsOverlayApp")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
