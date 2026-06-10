@@ -1,4 +1,4 @@
-# Sports Overlay
+# <img src="SportsOverlayApp/logo.png" height="32" align="center" alt=""> Sports Overlay
 
 ![.NET 9](https://img.shields.io/badge/.NET-9.0-512BD4?logo=dotnet)
 ![Windows](https://img.shields.io/badge/platform-Windows%2010%2F11-0078D6?logo=windows)
