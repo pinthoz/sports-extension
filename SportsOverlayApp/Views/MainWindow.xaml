@@ -42,22 +42,35 @@
                             </Setter.Value>
                         </Setter>
                         <Style.Triggers>
+                            <!-- Silent goal cue: hold the tennis-points green while
+                                 JustScored is on, then fade back to normal. -->
                             <DataTrigger Binding="{Binding JustScored}" Value="True">
                                 <DataTrigger.EnterActions>
                                     <BeginStoryboard>
                                         <Storyboard>
                                             <ColorAnimation
                                                 Storyboard.TargetProperty="(Border.Background).(SolidColorBrush.Color)"
-                                                To="#CC43A047" Duration="0:0:0.2"
-                                                AutoReverse="True" RepeatBehavior="3x"/>
+                                                To="#E62E7D32" Duration="0:0:0.4"/>
                                         </Storyboard>
                                     </BeginStoryboard>
                                 </DataTrigger.EnterActions>
+                                <DataTrigger.ExitActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <ColorAnimation
+                                                Storyboard.TargetProperty="(Border.Background).(SolidColorBrush.Color)"
+                                                To="#26FFFFFF" Duration="0:0:1.5"/>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </DataTrigger.ExitActions>
                             </DataTrigger>
                         </Style.Triggers>
                     </Style>
                 </Border.Style>
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="★" FontSize="10" Foreground="#FFFFD54F" Margin="0,0,3,0"
+                               VerticalAlignment="Center" ToolTip="Recommended for you"
+                               Visibility="{Binding IsRecommended, Converter={StaticResource BoolToVis}}"/>
                     <TextBlock Text="{Binding SportIcon}" FontSize="12" Margin="0,0,4,0"
                                VerticalAlignment="Center"/>
                     <TextBlock Text="{Binding HomeTeam}" FontSize="11" FontWeight="SemiBold"
@@ -170,10 +183,27 @@
                     <ItemsControl x:Name="PickerList">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <CheckBox IsChecked="{Binding IsShown, Mode=OneWay}" Click="PickerItem_Click"
-                                          Foreground="White" Margin="0,2">
-                                    <TextBlock Text="{Binding Summary}" FontSize="12"/>
-                                </CheckBox>
+                                <StackPanel Orientation="Horizontal" Margin="0,2">
+                                    <ToggleButton IsChecked="{Binding IsLiked, Mode=OneWay}" Click="Like_Click"
+                                                  FontSize="13" Margin="0,0,6,0" VerticalAlignment="Center"
+                                                  ToolTip="Like this game: after a few days the app recommends similar games (★)">
+                                        <ToggleButton.Style>
+                                            <Style TargetType="ToggleButton" BasedOn="{StaticResource FlatButton}">
+                                                <Setter Property="Content" Value="♡"/>
+                                                <Style.Triggers>
+                                                    <Trigger Property="IsChecked" Value="True">
+                                                        <Setter Property="Content" Value="♥"/>
+                                                        <Setter Property="Foreground" Value="#EF5350"/>
+                                                    </Trigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </ToggleButton.Style>
+                                    </ToggleButton>
+                                    <CheckBox IsChecked="{Binding IsShown, Mode=OneWay}" Click="PickerItem_Click"
+                                              Foreground="White" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding Summary}" FontSize="12"/>
+                                    </CheckBox>
+                                </StackPanel>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>

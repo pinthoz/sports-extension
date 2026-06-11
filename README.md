@@ -11,7 +11,7 @@ A compact, always-on-top score bar for Windows that shows your starred FlashScor
 
 ## How it works
 
-The app scrapes your starred games from FlashScore and displays them as small "pill" chips floating over your taskbar (or docked to the top/bottom of the screen). Scores update every few seconds, and you get a sound notification when someone scores.
+The app scrapes your starred games from FlashScore and displays them as small "pill" chips floating over your taskbar (or docked to the top/bottom of the screen). Scores update every few seconds; when a goal is scored the game's chip silently turns green for about 90 seconds. Like games with ♥ in the picker popup and, after a few days of data, the app starts recommending (★) and prioritising games you'd probably want to watch.
 
 There are two ways to get data in:
 
@@ -67,7 +67,7 @@ Right-click the tray icon → **Settings**. You can change:
 | Bar position | Taskbar overlay, bottom of screen, or top of screen |
 | Theme | Dark or light |
 | Opacity | How transparent the overlay is |
-| Goal sound | Sound alert when a score changes |
+| Goal highlight | Chip holds a green highlight for ~90s after a goal (no sound) |
 | Start with Windows | Auto-launch on login |
 | WebSocket port | Port for the extension connection |
 

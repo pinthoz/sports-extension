@@ -13,7 +13,6 @@ using System.Windows.Media;
 using System.Windows.Threading;
 using SportsOverlayApp.Models;
 using SportsOverlayApp.Services;
-using SportsOverlayApp.Utils;
 
 namespace SportsOverlayApp.Views
 {
@@ -23,12 +22,20 @@ namespace SportsOverlayApp.Views
         // (2 per side), a set-based chip like tennis takes 2 (1 per side).
         private const int SlotsPerSide = 2;
 
+        // Sports where a score change means a goal; only these get the green
+        // highlight. Set/point sports (tennis, volleyball...) change too often.
+        private static readonly HashSet<string> GoalSports = new()
+        {
+            "football", "futsal", "hockey", "handball"
+        };
+
         private readonly ObservableCollection<GameChipVm> allGames = new();
         private readonly ObservableCollection<GameChipVm> leftGames = new();
         private readonly ObservableCollection<GameChipVm> rightGames = new();
         private readonly HashSet<string> dismissed = new();
         private readonly List<string> manualPicks = new();   // user-pinned, highest priority
         private readonly HashSet<string> manualHidden = new(); // user-unchecked, never auto-shown
+        private readonly InterestTracker interests = new();
         private UserPreferences preferences = new();
         private DispatcherTimer? topmostTimer;
 
@@ -227,18 +234,22 @@ namespace SportsOverlayApp.Views
                 var chip = allGames.FirstOrDefault(c => c.Id == game.Id);
                 if (chip == null)
                 {
-                    allGames.Add(GameChipVm.From(game));
+                    chip = GameChipVm.From(game);
+                    chip.IsLiked = interests.IsLiked(chip.Id);
+                    chip.IsRecommended = interests.IsRecommended(
+                        game.Sport, game.Competition, game.HomeTeam, game.AwayTeam);
+                    allGames.Add(chip);
                     continue;
                 }
 
                 bool scored = chip.Score != game.Score && game.Score.Any(char.IsDigit);
                 chip.Update(game);
-                if (scored)
-                {
+                chip.IsRecommended = interests.IsRecommended(
+                    game.Sport, game.Competition, game.HomeTeam, game.AwayTeam);
+                // Goals are silent: the chip just holds a green highlight for a
+                // couple of minutes (see GameChipVm.FlashGoal).
+                if (scored && GoalSports.Contains(game.Sport) && preferences.EnableNotifications)
                     chip.FlashGoal(Dispatcher);
-                    if (preferences.EnableNotifications)
-                        Notifications.PlayGoalSound();
-                }
             }
 
             RefreshAssignments();
@@ -257,7 +268,8 @@ namespace SportsOverlayApp.Views
                 .Cast<GameChipVm>()
                 .Concat(allGames
                     .Where(g => !manualPicks.Contains(g.Id) && !manualHidden.Contains(g.Id))
-                    .OrderBy(g => g.IsFinished ? 2 : g.IsLive ? 0 : 1))
+                    .OrderBy(g => g.IsFinished ? 2 : g.IsLive ? 0 : 1)
+                    .ThenByDescending(g => g.IsRecommended))
                 .ToList();
 
             bool split = InTaskbarMode;
@@ -280,7 +292,9 @@ namespace SportsOverlayApp.Views
 
             LeftPill.Visibility = left.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
             RightPill.Visibility = right.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
-            OverflowToggle.Visibility = allGames.Count > left.Count + right.Count
+            // Always offered when there are games: besides picking what is
+            // shown, the popup is where games get liked (♥) for recommendations.
+            OverflowToggle.Visibility = allGames.Count > 0
                 ? Visibility.Visible
                 : Visibility.Collapsed;
         }
@@ -311,6 +325,8 @@ namespace SportsOverlayApp.Views
                 manualHidden.Remove(chip.Id);
                 manualPicks.Remove(chip.Id);
                 manualPicks.Insert(0, chip.Id); // newest pick wins the space fight
+                interests.RecordPin(chip.Id, chip.Sport, chip.Competition,
+                    chip.FullHomeTeam, chip.FullAwayTeam);
             }
             else
             {
@@ -318,6 +334,14 @@ namespace SportsOverlayApp.Views
                 manualHidden.Add(chip.Id);
             }
             RefreshAssignments();
+        }
+
+        private void Like_Click(object sender, RoutedEventArgs e)
+        {
+            if ((sender as FrameworkElement)?.DataContext is not GameChipVm chip) return;
+            chip.IsLiked = interests.ToggleLike(chip.Id, chip.Sport, chip.Competition,
+                chip.FullHomeTeam, chip.FullAwayTeam);
+            e.Handled = true;
         }
     }
 
@@ -353,6 +377,10 @@ namespace SportsOverlayApp.Views
 
         public string Id { get; private set; } = "";
         public string Sport { get; private set; } = "football";
+        public string Competition { get; private set; } = "";
+        // Unabbreviated names, used to match interests across days.
+        public string FullHomeTeam { get; private set; } = "";
+        public string FullAwayTeam { get; private set; } = "";
 
         /// <summary>Taskbar space the chip takes: narrow sports 1, set-based sports 2.</summary>
         public int Slots => NarrowSports.Contains(Sport) ? 1 : 2;
@@ -360,6 +388,7 @@ namespace SportsOverlayApp.Views
         private string sportIcon = "", homeTeam = "", awayTeam = "", score = "", time = "";
         private string partsDisplay = "", pointsDisplay = "", summary = "";
         private bool isLive, isFinished, justScored, isShown, servingHome, servingAway;
+        private bool isLiked, isRecommended;
 
         public string SportIcon { get => sportIcon; set => Set(ref sportIcon, value, nameof(SportIcon)); }
         public string HomeTeam { get => homeTeam; set => Set(ref homeTeam, value, nameof(HomeTeam)); }
@@ -375,6 +404,8 @@ namespace SportsOverlayApp.Views
         public bool IsShown { get => isShown; set => Set(ref isShown, value, nameof(IsShown)); }
         public bool ServingHome { get => servingHome; set => Set(ref servingHome, value, nameof(ServingHome)); }
         public bool ServingAway { get => servingAway; set => Set(ref servingAway, value, nameof(ServingAway)); }
+        public bool IsLiked { get => isLiked; set => Set(ref isLiked, value, nameof(IsLiked)); }
+        public bool IsRecommended { get => isRecommended; set => Set(ref isRecommended, value, nameof(IsRecommended)); }
 
         public static GameChipVm From(GameData g)
         {
@@ -386,6 +417,9 @@ namespace SportsOverlayApp.Views
         public void Update(GameData g)
         {
             Sport = g.Sport;
+            Competition = g.Competition;
+            FullHomeTeam = g.HomeTeam;
+            FullAwayTeam = g.AwayTeam;
             SportIcon = SportIcons.TryGetValue(g.Sport, out var icon) ? icon : "\U0001F3C5";
             HomeTeam = Abbreviate(g.HomeTeam);
             AwayTeam = Abbreviate(g.AwayTeam);
@@ -464,16 +498,22 @@ namespace SportsOverlayApp.Views
             return new string(digits.Select(c => char.IsDigit(c) ? sup[c - '0'] : c).ToArray());
         }
 
+        // How long the chip stays green after a goal before fading back.
+        private static readonly TimeSpan GoalHighlightDuration = TimeSpan.FromSeconds(90);
+        private DispatcherTimer? goalTimer;
+
         public void FlashGoal(Dispatcher dispatcher)
         {
+            // A second goal during the highlight just restarts the countdown.
+            goalTimer?.Stop();
             JustScored = true;
-            var timer = new DispatcherTimer(TimeSpan.FromSeconds(2), DispatcherPriority.Background,
+            goalTimer = new DispatcherTimer(GoalHighlightDuration, DispatcherPriority.Background,
                 (s, e) =>
                 {
                     JustScored = false;
                     ((DispatcherTimer)s!).Stop();
                 }, dispatcher);
-            timer.Start();
+            goalTimer.Start();
         }
 
         private void Set<T>(ref T field, T value, string name)

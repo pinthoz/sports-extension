@@ -24,7 +24,7 @@
         <Slider x:Name="OpacitySlider" Minimum="30" Maximum="100" Margin="0,4,0,12"
                 TickFrequency="5" IsSnapToTickEnabled="True"/>
 
-        <CheckBox x:Name="NotificationsToggle" Content="Goal notifications (sound)" Foreground="White" Margin="0,0,0,8"/>
+        <CheckBox x:Name="NotificationsToggle" Content="Highlight goals (chip turns green for ~90s, no sound)" Foreground="White" Margin="0,0,0,8"/>
         <CheckBox x:Name="StartupToggle" Content="Start with Windows" Foreground="White" Margin="0,0,0,12"/>
 
         <TextBlock Text="WebSocket port (must match the extension popup):" Foreground="White"/>
