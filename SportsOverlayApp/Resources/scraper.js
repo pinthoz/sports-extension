@@ -23,7 +23,7 @@
     6: "baseball", 7: "handball", 8: "rugby", 11: "futsal", 12: "volleyball",
     13: "cricket", 14: "darts", 15: "snooker", 16: "boxing", 17: "beach-volleyball",
     19: "rugby-league", 21: "badminton", 24: "motorsport", 28: "esports",
-    29: "mma", 30: "table-tennis"
+    29: "mma", 30: "table-tennis", 32: "motorsport"
   };
 
   const SPORT_ALIASES = {
@@ -38,7 +38,9 @@
     dardos: "darts",
     "tenis-de-mesa": "table-tennis",
     criquete: "cricket",
-    boxe: "boxing"
+    boxe: "boxing",
+    "auto-racing": "motorsport", "motorsport-auto-racing": "motorsport",
+    automobilismo: "motorsport"
   };
   const KNOWN_SPORTS = new Set([
     ...Object.values(SPORT_BY_ID),
@@ -162,9 +164,78 @@
     return (title || headerEl).textContent.trim().replace(/\s+/g, " ");
   }
 
+  // Ranking events (Formula 1, MotoGP...): no home/away duel, just a list of
+  // drivers with times. The whole session becomes one game whose "ranking"
+  // array carries the classification.
+  const NODUEL_SEL = {
+    section: ["[class*='sportName--noDuel']"],
+    row: [".event__match--noDuel[data-event-row]", ".event__match--noDuel[id^='g_']"],
+    title: ["[id^='header-league-title']", ".headerLeague__title", ".event__title"],
+    sportName: [".sportHeader__name"],
+    actions: [".headerLeague__actions"],
+    info: [".event__header--info"],
+    rank: [".event__rating"],
+    name: [".event__participantName"],
+    team: [".event__participantTeam"],
+    time: [".event__result--time", ".event__center"],
+    laps: [".event__resultLaps"]
+  };
+
+  function scrapeNoDuelSections() {
+    const games = [];
+    for (const section of qa(document, NODUEL_SEL.section)) {
+      // Starred on the event header or on any individual driver row.
+      if (!q(section, SEL.starActive)) continue;
+
+      const rows = qa(section, NODUEL_SEL.row)
+        .filter((r) => /^\d+\.?$/.test(text(r, NODUEL_SEL.rank)));
+      if (!rows.length) continue;
+
+      const ranking = rows.map((r) => ({
+        rank: text(r, NODUEL_SEL.rank),
+        name: text(r, NODUEL_SEL.name),
+        team: text(r, NODUEL_SEL.team),
+        time: text(r, NODUEL_SEL.time),
+        laps: text(r, NODUEL_SEL.laps)
+      }));
+
+      const actions = text(section, NODUEL_SEL.actions);
+      const isLive = /live/i.test(actions) ||
+        rows.some((r) => r.className.includes("--live"));
+      const isFinished = /finished|ended|cancel/i.test(actions);
+      // Scheduled sessions have no status badge; fall back to the start time
+      // in the info line ("12.06.2026 16:00, Circuit de ...").
+      const stage = actions ||
+        (text(section, NODUEL_SEL.info).match(/\b\d{1,2}:\d{2}\b/) || [""])[0];
+
+      const titleEl = q(section, NODUEL_SEL.title);
+      const title = titleEl ? titleEl.textContent.trim().replace(/\s+/g, " ") : "";
+      // Stable id: the session hash FlashScore puts in the header title id.
+      const idm = /header-league-title-([\w-]+)/.exec((titleEl && titleEl.id) || "");
+      games.push({
+        id: idm ? `noduel_${idm[1]}` : `noduel_${title}`,
+        sport: detectSport(rows[0], section),
+        title,
+        home: ranking[0].name,
+        away: "",
+        homeScore: ranking[0].time || "-",
+        awayScore: "",
+        homeParts: [], awayParts: [], homePoints: "", awayPoints: "",
+        serving: "",
+        ranking,
+        stage,
+        isLive,
+        isFinished,
+        competition: text(section, NODUEL_SEL.sportName) || title
+      });
+    }
+    return games;
+  }
+
   function scrapeStarredGames() {
     const games = [];
     for (const match of qa(document, SEL.match)) {
+      if (match.className.includes("--noDuel")) continue; // ranking rows, handled above
       if (!q(match, SEL.starActive)) continue;
 
       const stage = text(match, SEL.stage);
@@ -210,7 +281,7 @@
         competition: competitionFrom(headerEl)
       });
     }
-    return games;
+    return games.concat(scrapeNoDuelSections());
   }
 
   return JSON.stringify(scrapeStarredGames());

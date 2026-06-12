@@ -8,6 +8,21 @@
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis"/>
 
+        <ItemsPanelTemplate x:Key="HorizontalPanel">
+            <StackPanel Orientation="Horizontal"/>
+        </ItemsPanelTemplate>
+
+        <!-- Dark tooltips: the default light ones are unreadable over the
+             taskbar (used e.g. for the full F1 classification on hover). -->
+        <Style TargetType="ToolTip">
+            <Setter Property="Background" Value="#F2181820"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderBrush" Value="#55FFFFFF"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="10,8"/>
+            <Setter Property="FontSize" Value="12"/>
+        </Style>
+
         <Style x:Key="PillStyle" TargetType="Border">
             <Setter Property="CornerRadius" Value="8"/>
             <Setter Property="Background" Value="#D9181820"/>
@@ -33,7 +48,8 @@
         </Style>
 
         <DataTemplate x:Key="ChipTemplate">
-            <Border CornerRadius="6" Margin="2,4" Padding="7,2" VerticalAlignment="Center">
+            <Border CornerRadius="6" Margin="2,4" Padding="7,2" VerticalAlignment="Center"
+                    ToolTip="{Binding RankingTooltip}" ToolTipService.ShowDuration="60000">
                 <Border.Style>
                     <Style TargetType="Border">
                         <Setter Property="Background">
@@ -97,6 +113,21 @@
                             </Style>
                         </TextBlock.Style>
                     </TextBlock>
+                    <!-- 2nd/3rd place for ranking events (F1...): name in white,
+                         gap-to-leader time in red. -->
+                    <ItemsControl ItemsSource="{Binding RankingGaps}"
+                                  ItemsPanel="{StaticResource HorizontalPanel}" Margin="6,0,0,0">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,6,0">
+                                    <TextBlock Text="{Binding Name}" FontSize="11" FontWeight="SemiBold"
+                                               Foreground="#FFDCEBFA" Margin="0,0,3,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding Time}" FontSize="12" FontWeight="Bold"
+                                               Foreground="#FFEF5350" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
                     <Border CornerRadius="4" Padding="5,0" Margin="6,1" VerticalAlignment="Center">
                         <Border.Style>
                             <Style TargetType="Border">
@@ -131,10 +162,6 @@
                 </StackPanel>
             </Border>
         </DataTemplate>
-
-        <ItemsPanelTemplate x:Key="HorizontalPanel">
-            <StackPanel Orientation="Horizontal"/>
-        </ItemsPanelTemplate>
     </Window.Resources>
 
     <!-- The window spans the whole taskbar width; everything outside the pills is

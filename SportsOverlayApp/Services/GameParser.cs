@@ -44,6 +44,15 @@ namespace SportsOverlayApp.Services
                     Competition = g["competition"]?.ToString() ?? "",
                     LastUpdated = DateTime.Now
                 };
+                gameData.Ranking = (g["ranking"] as JArray)?.ToObject<List<RankingEntry>>()
+                                   ?? new List<RankingEntry>();
+                if (gameData.Ranking.Count > 0)
+                {
+                    // Ranking events: the "score" is the leader's time, and the
+                    // title is the session name, not "X vs Y".
+                    gameData.Title = g["title"]?.ToString() ?? gameData.Title;
+                    gameData.Score = gameData.Ranking[0].Time;
+                }
                 ExtractTennisPoints(gameData);
                 games.Add(gameData);
             }

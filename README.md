@@ -7,7 +7,6 @@
 A compact, always-on-top score bar for Windows that shows your starred FlashScore games right on your desktop. No need to keep switching tabs to check scores.
 
 ![screenshot placeholder](docs/screenshot.png)
-<!-- TODO: replace with an actual screenshot once you take one -->
 
 ## How it works
 
@@ -30,7 +29,15 @@ Football, tennis, basketball, hockey, baseball, handball, volleyball, rugby, cri
 - [.NET 9 SDK](https://dotnet.microsoft.com/download/dotnet/9.0)
 - [WebView2 Runtime](https://developer.microsoft.com/en-us/microsoft-edge/webview2/) (comes pre-installed on most Windows 10/11 machines)
 
-### Run it
+### Install it (no terminal needed)
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools\install.ps1
+```
+
+This publishes a Release build to `%LocalAppData%\Programs\SportsOverlay` and puts a **Sports Overlay** shortcut on the desktop. Double-click it to launch — no console window, no terminal. Run the script again after pulling changes to update the installed copy (close the app first).
+
+To run straight from source during development instead:
 
 ```powershell
 cd SportsOverlayApp

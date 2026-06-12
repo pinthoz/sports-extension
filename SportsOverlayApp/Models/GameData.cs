@@ -3,6 +3,16 @@ using System.Collections.Generic;
 
 namespace SportsOverlayApp.Models
 {
+    /// <summary>One row of a ranking event (F1 practice, MotoGP race, ...).</summary>
+    public class RankingEntry
+    {
+        public string Rank { get; set; } = "";
+        public string Name { get; set; } = "";
+        public string Team { get; set; } = "";
+        public string Time { get; set; } = "";
+        public string Laps { get; set; } = "";
+    }
+
     public class GameData
     {
         public string Id { get; set; } = "";
@@ -22,6 +32,8 @@ namespace SportsOverlayApp.Models
         public string AwayPoints { get; set; } = "";
         // Which side is serving in a live tennis match: "home", "away" or "".
         public string Serving { get; set; } = "";
+        // Classification of a ranking event (motorsport); empty for duel sports.
+        public List<RankingEntry> Ranking { get; set; } = new();
         public bool IsLive { get; set; }
         public bool IsFinished { get; set; }
         public DateTime LastUpdated { get; set; } = DateTime.Now;

@@ -345,6 +345,13 @@ namespace SportsOverlayApp.Views
         }
     }
 
+    /// <summary>2nd/3rd place entry shown next to the leader in a ranking chip.</summary>
+    public class RankingGapVm
+    {
+        public string Name { get; set; } = "";
+        public string Time { get; set; } = "";
+    }
+
     public class GameChipVm : INotifyPropertyChanged
     {
         private static readonly Dictionary<string, string> SportIcons = new()
@@ -387,6 +394,7 @@ namespace SportsOverlayApp.Views
 
         private string sportIcon = "", homeTeam = "", awayTeam = "", score = "", time = "";
         private string partsDisplay = "", pointsDisplay = "", summary = "";
+        private string? rankingTooltip;
         private bool isLive, isFinished, justScored, isShown, servingHome, servingAway;
         private bool isLiked, isRecommended;
 
@@ -398,6 +406,10 @@ namespace SportsOverlayApp.Views
         public string PartsDisplay { get => partsDisplay; set => Set(ref partsDisplay, value, nameof(PartsDisplay)); }
         public string PointsDisplay { get => pointsDisplay; set => Set(ref pointsDisplay, value, nameof(PointsDisplay)); }
         public string Summary { get => summary; set => Set(ref summary, value, nameof(Summary)); }
+        // Full classification of a ranking event, shown on hover; null hides the tooltip.
+        public string? RankingTooltip { get => rankingTooltip; set => Set(ref rankingTooltip, value, nameof(RankingTooltip)); }
+        // 2nd/3rd place name + gap-to-leader time, for ranking events (F1...).
+        public ObservableCollection<RankingGapVm> RankingGaps { get; } = new();
         public bool IsLive { get => isLive; set => Set(ref isLive, value, nameof(IsLive)); }
         public bool IsFinished { get => isFinished; set => Set(ref isFinished, value, nameof(IsFinished)); }
         public bool JustScored { get => justScored; set => Set(ref justScored, value, nameof(JustScored)); }
@@ -434,6 +446,28 @@ namespace SportsOverlayApp.Views
                 ? $"{g.HomePoints}-{g.AwayPoints}"
                 : "";
             Summary = $"{SportIcon} {g.HomeTeam} {Score} {g.AwayTeam}  {Time}";
+
+            if (g.Ranking.Count > 0)
+            {
+                // Ranking events (F1...): the chip shows the leader and their
+                // time plus the gaps to 2nd and 3rd; hovering the chip reveals
+                // the full classification.
+                AwayTeam = "";
+                Score = g.Ranking[0].Time;
+                RankingGaps.Clear();
+                foreach (var r in g.Ranking.Skip(1).Take(2).Where(r => r.Time != ""))
+                    RankingGaps.Add(new RankingGapVm { Name = r.Name, Time = r.Time });
+                PointsDisplay = "";
+                RankingTooltip = string.Join("\n", g.Ranking.Select(r =>
+                    $"{r.Rank} {r.Name} ({r.Team})  {r.Time}"
+                    + (r.Laps != "" ? $"  [{r.Laps} laps]" : "")));
+                Summary = $"{SportIcon} {g.Title}: {HomeTeam} {Score}  {Time}";
+            }
+            else
+            {
+                RankingTooltip = null;
+                RankingGaps.Clear();
+            }
         }
 
         // Shortens long club names so four football chips fit on the taskbar:
