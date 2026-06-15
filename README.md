@@ -10,7 +10,7 @@ A compact, always-on-top score bar for Windows that shows your starred FlashScor
 
 ## How it works
 
-The app scrapes your starred games from FlashScore and displays them as small "pill" chips floating over your taskbar (or docked to the top/bottom of the screen). Scores update every few seconds; when a goal is scored the game's chip silently turns green for about 90 seconds. Like games with ♥ in the picker popup and, after a few days of data, the app starts recommending (★) and prioritising games you'd probably want to watch.
+The app scrapes your starred games from FlashScore and displays them as small "pill" chips floating over your taskbar (or docked to the top/bottom of the screen). Each player/team is shown with its crest/nationality flag, scores update every few seconds, and when a goal is scored the game's chip silently turns green for about 90 seconds. Like games with ♥ in the picker popup and, after a few days of data, the app starts recommending (★) and prioritising games you'd probably want to watch.
 
 There are two ways to get data in:
 

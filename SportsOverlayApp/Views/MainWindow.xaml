@@ -23,6 +23,17 @@
             <Setter Property="FontSize" Value="12"/>
         </Style>
 
+        <!-- Team/participant crest or nationality flag shown next to team/player
+             names. Visibility is driven per-instance by a DataTrigger on the
+             bound URL (see usages). -->
+        <Style x:Key="LogoImage" TargetType="Image">
+            <Setter Property="Width" Value="14"/>
+            <Setter Property="Height" Value="14"/>
+            <Setter Property="Margin" Value="0,0,3,0"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Stretch" Value="Uniform"/>
+        </Style>
+
         <Style x:Key="PillStyle" TargetType="Border">
             <Setter Property="CornerRadius" Value="8"/>
             <Setter Property="Background" Value="#D9181820"/>
@@ -89,6 +100,28 @@
                                Visibility="{Binding IsRecommended, Converter={StaticResource BoolToVis}}"/>
                     <TextBlock Text="{Binding SportIcon}" FontSize="12" Margin="0,0,4,0"
                                VerticalAlignment="Center"/>
+                    <Image Source="{Binding HomeLogoUrl}">
+                        <Image.Style>
+                            <Style TargetType="Image" BasedOn="{StaticResource LogoImage}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding HomeLogoUrl}" Value="">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Image.Style>
+                    </Image>
+                    <Image Source="{Binding HomeFlag}">
+                        <Image.Style>
+                            <Style TargetType="Image" BasedOn="{StaticResource LogoImage}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding HomeFlag}" Value="">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Image.Style>
+                    </Image>
                     <TextBlock Text="{Binding HomeTeam}" FontSize="11" FontWeight="SemiBold"
                                Foreground="White" VerticalAlignment="Center"/>
                     <TextBlock Text="●" FontSize="10" Foreground="#FFFFD54F" Margin="3,0,0,0"
@@ -96,6 +129,28 @@
                                Visibility="{Binding ServingHome, Converter={StaticResource BoolToVis}}"/>
                     <TextBlock Text="{Binding Score}" FontSize="12" FontWeight="Bold"
                                Foreground="#FFD54F" Margin="6,0" VerticalAlignment="Center"/>
+                    <Image Source="{Binding AwayLogoUrl}">
+                        <Image.Style>
+                            <Style TargetType="Image" BasedOn="{StaticResource LogoImage}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding AwayLogoUrl}" Value="">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Image.Style>
+                    </Image>
+                    <Image Source="{Binding AwayFlag}">
+                        <Image.Style>
+                            <Style TargetType="Image" BasedOn="{StaticResource LogoImage}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding AwayFlag}" Value="">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Image.Style>
+                    </Image>
                     <TextBlock Text="{Binding AwayTeam}" FontSize="11" FontWeight="SemiBold"
                                Foreground="White" VerticalAlignment="Center"/>
                     <TextBlock Text="●" FontSize="10" Foreground="#FFFFD54F" Margin="3,0,0,0"
@@ -120,6 +175,17 @@
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
                                 <StackPanel Orientation="Horizontal" Margin="0,0,6,0">
+                                    <Image Source="{Binding Flag}">
+                                        <Image.Style>
+                                            <Style TargetType="Image" BasedOn="{StaticResource LogoImage}">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Flag}" Value="">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Image.Style>
+                                    </Image>
                                     <TextBlock Text="{Binding Name}" FontSize="11" FontWeight="SemiBold"
                                                Foreground="#FFDCEBFA" Margin="0,0,3,0" VerticalAlignment="Center"/>
                                     <TextBlock Text="{Binding Time}" FontSize="12" FontWeight="Bold"

@@ -32,7 +32,15 @@
     away: [".event__participant--away", ".event__awayParticipant", "[class*='awayParticipant']"],
     homeScore: [".event__score--home", "[class*='score'][class*='home']"],
     awayScore: [".event__score--away", "[class*='score'][class*='away']"],
-    stage: [".event__stage--block", ".event__stage", ".event__time", "[class*='stage']"]
+    stage: [".event__stage--block", ".event__stage", ".event__time", "[class*='stage']"],
+    homeFlag: [".event__logo--home.flag", "[class*='participant--home'] .flag"],
+    awayFlag: [".event__logo--away.flag", "[class*='participant--away'] .flag"],
+    // Crests are either an <img> nested inside the participant cell (football
+    // club badges) or a sibling <img class="event__logo--home/away"> without
+    // the "flag" class (basketball etc.; the "flag" variant is a <span>
+    // handled by homeFlag/awayFlag above).
+    homeLogo: [".event__participant--home img", "[class*='homeParticipant'] img", ".event__logo--home:not(.flag)"],
+    awayLogo: [".event__participant--away img", "[class*='awayParticipant'] img", ".event__logo--away:not(.flag)"]
   };
 
   // FlashScore encodes the sport in the match id: g_<sportId>_<matchId>.
@@ -119,18 +127,25 @@
   // Per-period scores: halves in football, sets in tennis/volleyball, etc.
   // Tennis tiebreak scores live in a nested <sup>-like element; converting them
   // to superscript digits keeps "7(9)" from reading as "79".
-  function scrapeParts(matchEl, side) {
+  // Reads a single set/points column ("event__part--<side>--<i>"), folding any
+  // tiebreak sup/sub into a superscript (e.g. 7⁹). Returns "" when absent.
+  function scrapePart(matchEl, side, i) {
+    const el = matchEl.querySelector(`.event__part--${side}.event__part--${i}`);
+    if (!el) return "";
+    let t = el.textContent.trim().replace(/\s+/g, "");
+    const sup = el.querySelector("sup, sub, [class*='tiebreak' i]");
+    if (sup) {
+      const supText = sup.textContent.trim();
+      if (supText && t.endsWith(supText) && t.length > supText.length)
+        t = t.slice(0, -supText.length) + toSuperscript(supText);
+    }
+    return t;
+  }
+
+  function scrapeParts(matchEl, side, maxIndex = 7) {
     const out = [];
-    for (let i = 1; i <= 7; i++) {
-      const el = matchEl.querySelector(`.event__part--${side}.event__part--${i}`);
-      if (!el) continue;
-      let t = el.textContent.trim().replace(/\s+/g, "");
-      const sup = el.querySelector("sup, sub, [class*='tiebreak' i]");
-      if (sup) {
-        const supText = sup.textContent.trim();
-        if (supText && t.endsWith(supText) && t.length > supText.length)
-          t = t.slice(0, -supText.length) + toSuperscript(supText);
-      }
+    for (let i = 1; i <= maxIndex; i++) {
+      const t = scrapePart(matchEl, side, i);
       if (t && /\d/.test(t)) out.push(t);
     }
     return out;
@@ -178,6 +193,71 @@
     return el ? el.textContent.trim() : "";
   }
 
+  // FlashScore marks nationality with a CSS-sprite span carrying the
+  // country name in its title (e.g. <span class="flag fl_24" title="Australia">).
+  // Map that name to an ISO 3166-1 alpha-2 code so it can be shown as a flag image.
+  const COUNTRY_TO_ISO2 = {
+    Afghanistan: "AF", Albania: "AL", Algeria: "DZ", Andorra: "AD", Angola: "AO",
+    Argentina: "AR", Armenia: "AM", Australia: "AU", Austria: "AT", Azerbaijan: "AZ",
+    Bahamas: "BS", Bahrain: "BH", Bangladesh: "BD", Barbados: "BB", Belarus: "BY",
+    Belgium: "BE", Belize: "BZ", Benin: "BJ", Bermuda: "BM", Bhutan: "BT",
+    Bolivia: "BO", "Bosnia and Herzegovina": "BA", Botswana: "BW", Brazil: "BR",
+    Brunei: "BN", Bulgaria: "BG", "Burkina Faso": "BF", Burundi: "BI", Cambodia: "KH",
+    Cameroon: "CM", Canada: "CA", "Cape Verde": "CV", "Central African Republic": "CF",
+    Chad: "TD", Chile: "CL", China: "CN", Colombia: "CO", Comoros: "KM", Congo: "CG",
+    "Costa Rica": "CR", Croatia: "HR", Cuba: "CU", Curacao: "CW", Cyprus: "CY",
+    "Czech Republic": "CZ", Czechia: "CZ", Denmark: "DK", Djibouti: "DJ",
+    Dominica: "DM", "Dominican Republic": "DO", Ecuador: "EC", Egypt: "EG",
+    "El Salvador": "SV", "Equatorial Guinea": "GQ", Eritrea: "ER", Estonia: "EE",
+    Eswatini: "SZ", Ethiopia: "ET", "Faroe Islands": "FO", Fiji: "FJ", Finland: "FI",
+    France: "FR", Gabon: "GA", Gambia: "GM", Georgia: "GE", Germany: "DE",
+    Ghana: "GH", Gibraltar: "GI", Greece: "GR", Greenland: "GL", Grenada: "GD",
+    Guatemala: "GT", Guinea: "GN", "Guinea-Bissau": "GW", Guyana: "GY", Haiti: "HT",
+    Honduras: "HN", "Hong Kong": "HK", Hungary: "HU", Iceland: "IS", India: "IN",
+    Indonesia: "ID", Iran: "IR", Iraq: "IQ", Ireland: "IE", Israel: "IL", Italy: "IT",
+    "Ivory Coast": "CI", Jamaica: "JM", Japan: "JP", Jordan: "JO", Kazakhstan: "KZ",
+    Kenya: "KE", Kosovo: "XK", Kuwait: "KW", Kyrgyzstan: "KG", Laos: "LA",
+    Latvia: "LV", Lebanon: "LB", Lesotho: "LS", Liberia: "LR", Libya: "LY",
+    Liechtenstein: "LI", Lithuania: "LT", Luxembourg: "LU", Madagascar: "MG",
+    Malawi: "MW", Malaysia: "MY", Maldives: "MV", Mali: "ML", Malta: "MT",
+    Mauritania: "MR", Mauritius: "MU", Mexico: "MX", Moldova: "MD", Monaco: "MC",
+    Mongolia: "MN", Montenegro: "ME", Morocco: "MA", Mozambique: "MZ", Myanmar: "MM",
+    Namibia: "NA", Nepal: "NP", Netherlands: "NL", "New Zealand": "NZ",
+    Nicaragua: "NI", Niger: "NE", Nigeria: "NG", "North Korea": "KP",
+    "North Macedonia": "MK", Norway: "NO", Oman: "OM", Pakistan: "PK",
+    Palestine: "PS", Panama: "PA", "Papua New Guinea": "PG", Paraguay: "PY",
+    Peru: "PE", Philippines: "PH", Poland: "PL", Portugal: "PT",
+    "Puerto Rico": "PR", Qatar: "QA", Romania: "RO", Russia: "RU", Rwanda: "RW",
+    "San Marino": "SM", "Saudi Arabia": "SA", Senegal: "SN", Serbia: "RS",
+    "Sierra Leone": "SL", Singapore: "SG", Slovakia: "SK", Slovenia: "SI",
+    Somalia: "SO", "South Africa": "ZA", "South Korea": "KR", "Korea Republic": "KR",
+    "South Sudan": "SS", Spain: "ES", "Sri Lanka": "LK", Sudan: "SD",
+    Suriname: "SR", Sweden: "SE", Switzerland: "CH", Syria: "SY", Taiwan: "TW",
+    "Chinese Taipei": "TW", Tajikistan: "TJ", Tanzania: "TZ", Thailand: "TH",
+    Togo: "TG", "Trinidad and Tobago": "TT", Tunisia: "TN", Turkey: "TR",
+    Turkmenistan: "TM", Uganda: "UG", Ukraine: "UA", "United Arab Emirates": "AE",
+    "United Kingdom": "GB", "United States": "US", USA: "US", Uruguay: "UY",
+    Uzbekistan: "UZ", Venezuela: "VE", Vietnam: "VN", Yemen: "YE", Zambia: "ZM",
+    Zimbabwe: "ZW"
+  };
+
+  function flagCode(countryName) {
+    const code = COUNTRY_TO_ISO2[(countryName || "").trim()];
+    return code ? code.toLowerCase() : "";
+  }
+
+  // Reads a "flag" span's title (country name) and returns the matching ISO2 code.
+  function flagOf(root, selectors) {
+    const el = q(root, selectors);
+    return el ? flagCode(el.getAttribute("title") || "") : "";
+  }
+
+  // Reads the team/participant crest <img> src, if FlashScore renders one.
+  function logoUrl(root, selectors) {
+    const el = q(root, selectors);
+    return el ? el.getAttribute("src") || "" : "";
+  }
+
   // Walks up from a match row to find the league header that precedes it.
   function findHeaderEl(matchEl) {
     let el = matchEl;
@@ -214,7 +294,8 @@
     name: [".event__participantName"],
     team: [".event__participantTeam"],
     time: [".event__result--time", ".event__center"],
-    laps: [".event__resultLaps"]
+    laps: [".event__resultLaps"],
+    flag: [".event__participantName .flag", ".flag"]
   };
 
   function scrapeNoDuelSections() {
@@ -232,7 +313,8 @@
         name: text(r, NODUEL_SEL.name),
         team: text(r, NODUEL_SEL.team),
         time: text(r, NODUEL_SEL.time),
-        laps: text(r, NODUEL_SEL.laps)
+        laps: text(r, NODUEL_SEL.laps),
+        flag: flagOf(r, NODUEL_SEL.flag)
       }));
 
       const actions = text(section, NODUEL_SEL.actions);
@@ -285,20 +367,25 @@
 
       const headerEl = findHeaderEl(match);
       const sport = detectSport(match, headerEl);
-      const homeParts = scrapeParts(match, "home");
-      const awayParts = scrapeParts(match, "away");
+      // Tennis sets live in part--1..5; the current game points sit in the
+      // dedicated part--6 slot. Reading points straight from part--6 (instead
+      // of popping the last set column) keeps a fresh "0 games" column from
+      // being mistaken for "0 points" at the start of a game/set, and carries
+      // the advantage marker ("A"/"AD") through unchanged.
+      const tennis = sport === "tennis";
+      const homeParts = scrapeParts(match, "home", tennis ? 5 : 7);
+      const awayParts = scrapeParts(match, "away", tennis ? 5 : 7);
       let homePoints = scrapePoints(match, "home");
       let awayPoints = scrapePoints(match, "away");
 
-      // FlashScore appends the live game points (0/15/30/40/A) as one more
-      // "part" column; peel it off so it doesn't read as a set score.
       const GAME_POINTS = /^(0|15|30|40|A|AD)$/i;
-      if (sport === "tennis" && isLive && !homePoints && !awayPoints &&
-          homeParts.length && homeParts.length === awayParts.length &&
-          GAME_POINTS.test(homeParts[homeParts.length - 1]) &&
-          GAME_POINTS.test(awayParts[awayParts.length - 1])) {
-        homePoints = homeParts.pop();
-        awayPoints = awayParts.pop();
+      if (tennis && isLive && !homePoints && !awayPoints) {
+        const h = scrapePart(match, "home", 6);
+        const a = scrapePart(match, "away", 6);
+        if (GAME_POINTS.test(h) && GAME_POINTS.test(a)) {
+          homePoints = h;
+          awayPoints = a;
+        }
       }
 
       games.push({
@@ -306,6 +393,10 @@
         sport,
         home: text(match, SEL.home),
         away: text(match, SEL.away),
+        homeFlag: flagOf(match, SEL.homeFlag),
+        awayFlag: flagOf(match, SEL.awayFlag),
+        homeLogo: logoUrl(match, SEL.homeLogo),
+        awayLogo: logoUrl(match, SEL.awayLogo),
         homeScore: text(match, SEL.homeScore) || "-",
         awayScore: text(match, SEL.awayScore) || "-",
         homeParts,

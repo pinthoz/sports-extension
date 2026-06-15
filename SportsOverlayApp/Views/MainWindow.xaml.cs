@@ -350,6 +350,7 @@ namespace SportsOverlayApp.Views
     {
         public string Name { get; set; } = "";
         public string Time { get; set; } = "";
+        public string Flag { get; set; } = "";
     }
 
     public class GameChipVm : INotifyPropertyChanged
@@ -382,6 +383,10 @@ namespace SportsOverlayApp.Views
         // Sports whose chip stays narrow (no per-set detail shown).
         private static readonly HashSet<string> NarrowSports = new() { "football", "futsal" };
 
+        // Builds a flag image URL from a lowercase ISO2 code (e.g. "gb"); empty
+        // codes (no flag for that side) map to "" so the bound Image collapses.
+        private static string FlagUrl(string iso2) => iso2 == "" ? "" : $"https://flagcdn.com/h24/{iso2}.png";
+
         public string Id { get; private set; } = "";
         public string Sport { get; private set; } = "football";
         public string Competition { get; private set; } = "";
@@ -393,6 +398,8 @@ namespace SportsOverlayApp.Views
         public int Slots => NarrowSports.Contains(Sport) ? 1 : 2;
 
         private string sportIcon = "", homeTeam = "", awayTeam = "", score = "", time = "";
+        private string homeFlag = "", awayFlag = "";
+        private string homeLogoUrl = "", awayLogoUrl = "";
         private string partsDisplay = "", pointsDisplay = "", summary = "";
         private string? rankingTooltip;
         private bool isLive, isFinished, justScored, isShown, servingHome, servingAway;
@@ -401,6 +408,10 @@ namespace SportsOverlayApp.Views
         public string SportIcon { get => sportIcon; set => Set(ref sportIcon, value, nameof(SportIcon)); }
         public string HomeTeam { get => homeTeam; set => Set(ref homeTeam, value, nameof(HomeTeam)); }
         public string AwayTeam { get => awayTeam; set => Set(ref awayTeam, value, nameof(AwayTeam)); }
+        public string HomeFlag { get => homeFlag; set => Set(ref homeFlag, value, nameof(HomeFlag)); }
+        public string AwayFlag { get => awayFlag; set => Set(ref awayFlag, value, nameof(AwayFlag)); }
+        public string HomeLogoUrl { get => homeLogoUrl; set => Set(ref homeLogoUrl, value, nameof(HomeLogoUrl)); }
+        public string AwayLogoUrl { get => awayLogoUrl; set => Set(ref awayLogoUrl, value, nameof(AwayLogoUrl)); }
         public string Score { get => score; set => Set(ref score, value, nameof(Score)); }
         public string Time { get => time; set => Set(ref time, value, nameof(Time)); }
         public string PartsDisplay { get => partsDisplay; set => Set(ref partsDisplay, value, nameof(PartsDisplay)); }
@@ -435,6 +446,10 @@ namespace SportsOverlayApp.Views
             SportIcon = SportIcons.TryGetValue(g.Sport, out var icon) ? icon : "\U0001F3C5";
             HomeTeam = Abbreviate(g.HomeTeam);
             AwayTeam = Abbreviate(g.AwayTeam);
+            HomeFlag = FlagUrl(g.HomeFlag);
+            AwayFlag = FlagUrl(g.AwayFlag);
+            HomeLogoUrl = g.HomeLogoUrl;
+            AwayLogoUrl = g.AwayLogoUrl;
             Score = g.Score;
             Time = AbbrevStage(g.Time);
             IsLive = g.IsLive;
@@ -453,10 +468,14 @@ namespace SportsOverlayApp.Views
                 // time plus the gaps to 2nd and 3rd; hovering the chip reveals
                 // the full classification.
                 AwayTeam = "";
+                AwayFlag = "";
+                AwayLogoUrl = "";
+                HomeFlag = FlagUrl(g.Ranking[0].Flag);
+                HomeLogoUrl = "";
                 Score = g.Ranking[0].Time;
                 RankingGaps.Clear();
                 foreach (var r in g.Ranking.Skip(1).Take(2).Where(r => r.Time != ""))
-                    RankingGaps.Add(new RankingGapVm { Name = r.Name, Time = r.Time });
+                    RankingGaps.Add(new RankingGapVm { Name = r.Name, Time = r.Time, Flag = FlagUrl(r.Flag) });
                 PointsDisplay = "";
                 RankingTooltip = string.Join("\n", g.Ranking.Select(r =>
                     $"{r.Rank} {r.Name} ({r.Team})  {r.Time}"

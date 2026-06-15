@@ -11,6 +11,8 @@ namespace SportsOverlayApp.Models
         public string Team { get; set; } = "";
         public string Time { get; set; } = "";
         public string Laps { get; set; } = "";
+        // Nationality flag, as a lowercase ISO 3166-1 alpha-2 code (e.g. "gb").
+        public string Flag { get; set; } = "";
     }
 
     public class GameData
@@ -24,6 +26,12 @@ namespace SportsOverlayApp.Models
         public string Time { get; set; } = "";
         public string HomeTeam { get; set; } = "";
         public string AwayTeam { get; set; } = "";
+        // Nationality flag for each side, as a lowercase ISO2 code (tennis players, F1 drivers, ...).
+        public string HomeFlag { get; set; } = "";
+        public string AwayFlag { get; set; } = "";
+        // Team/participant crest image URL, when FlashScore renders one.
+        public string HomeLogoUrl { get; set; } = "";
+        public string AwayLogoUrl { get; set; } = "";
         // Per-period scores: halves in football, sets in tennis/volleyball, etc.
         public List<string> HomeParts { get; set; } = new();
         public List<string> AwayParts { get; set; } = new();
