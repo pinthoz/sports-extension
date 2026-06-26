@@ -44,6 +44,13 @@ namespace SportsOverlayApp.Models
         public List<RankingEntry> Ranking { get; set; } = new();
         public bool IsLive { get; set; }
         public bool IsFinished { get; set; }
+        // True when the game is starred on FlashScore. The favourites scrape
+        // only ever yields starred games; the discovery scrape also returns
+        // unstarred games (Starred=false) as recommendation candidates.
+        public bool Starred { get; set; } = true;
+        // Set by the recommendation engine for an unstarred candidate that
+        // matches the user's interest profile.
+        public bool IsRecommendedCandidate { get; set; }
         public DateTime LastUpdated { get; set; } = DateTime.Now;
     }
 }

@@ -29,5 +29,10 @@ namespace SportsOverlayApp.Models
         // Page the embedded browser opens; the favourites page aggregates
         // starred games across all sports.
         public string FlashScoreUrl { get; set; } = "https://www.flashscore.com/favourites/";
+        // When on (and using the built-in browser), a hidden discovery browser
+        // scans the sports you follow for games to recommend without starring.
+        public bool EnableRecommendations { get; set; } = true;
+        // Max recommended (not-yet-starred) games to surface at once.
+        public int MaxRecommendations { get; set; } = 6;
     }
 }

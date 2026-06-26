@@ -32,6 +32,8 @@ namespace SportsOverlayApp.Views
         private readonly ObservableCollection<GameChipVm> allGames = new();
         private readonly ObservableCollection<GameChipVm> leftGames = new();
         private readonly ObservableCollection<GameChipVm> rightGames = new();
+        // Recommended games the user has not starred (from the discovery browser).
+        private readonly ObservableCollection<GameChipVm> recommendedGames = new();
         private readonly HashSet<string> dismissed = new();
         private readonly List<string> manualPicks = new();   // user-pinned, highest priority
         private readonly HashSet<string> manualHidden = new(); // user-unchecked, never auto-shown
@@ -45,6 +47,7 @@ namespace SportsOverlayApp.Views
             LeftList.ItemsSource = leftGames;
             RightList.ItemsSource = rightGames;
             PickerList.ItemsSource = allGames;
+            RecommendedList.ItemsSource = recommendedGames;
             SystemParameters.StaticPropertyChanged += (s, e) =>
             {
                 if (e.PropertyName == nameof(SystemParameters.WorkArea))
@@ -228,6 +231,14 @@ namespace SportsOverlayApp.Views
 
             foreach (var game in data)
             {
+                // Every scraped game is starred on FlashScore: record that as a
+                // passive interest signal (deduped per day). Ranking events
+                // (F1...) have no fixed opponents, so they don't feed team
+                // affinity and are skipped.
+                if (game.Ranking.Count == 0)
+                    interests.RecordStar(game.Id, game.Sport, game.Competition,
+                        game.HomeTeam, game.AwayTeam);
+
                 if (dismissed.Contains(game.Id))
                     continue;
 
@@ -255,6 +266,64 @@ namespace SportsOverlayApp.Views
             RefreshAssignments();
         }
 
+        /// <summary>Sports the user follows, for the discovery browser to scan.</summary>
+        public IReadOnlyList<string> FollowedSports() =>
+            preferences.EnableRecommendations ? interests.FollowedSports() : Array.Empty<string>();
+
+        /// <summary>
+        /// Receives every game scraped from the broad sport pages (starred or
+        /// not) and keeps the ones the profile recommends but the user has not
+        /// starred. These fill leftover bar slots and the popup's Recommended
+        /// section; the starred feed in <see cref="allGames"/> is untouched.
+        /// </summary>
+        public void UpdateCandidates(List<GameData> candidates)
+        {
+            if (!preferences.EnableRecommendations)
+            {
+                if (recommendedGames.Count > 0) { recommendedGames.Clear(); RefreshAssignments(); }
+                return;
+            }
+
+            var starredIds = new HashSet<string>(allGames.Select(g => g.Id));
+            var picked = candidates
+                .Where(g => !g.Starred && g.Ranking.Count == 0
+                            && !starredIds.Contains(g.Id)
+                            && !dismissed.Contains(g.Id)
+                            && !manualHidden.Contains(g.Id))
+                .Select(g => (game: g, score: interests.Score(g.Sport, g.Competition, g.HomeTeam, g.AwayTeam)))
+                .Where(t => interests.MeetsThreshold(t.score))
+                .OrderBy(t => t.game.IsFinished ? 1 : 0)
+                .ThenByDescending(t => t.score)
+                .Take(Math.Max(0, preferences.MaxRecommendations))
+                .Select(t => t.game)
+                .ToList();
+
+            // Rebuild the collection in order, reusing chips by id to avoid flicker.
+            var keep = new HashSet<string>(picked.Select(g => g.Id));
+            for (int i = recommendedGames.Count - 1; i >= 0; i--)
+                if (!keep.Contains(recommendedGames[i].Id))
+                    recommendedGames.RemoveAt(i);
+
+            for (int i = 0; i < picked.Count; i++)
+            {
+                var game = picked[i];
+                var chip = recommendedGames.FirstOrDefault(c => c.Id == game.Id);
+                if (chip == null)
+                {
+                    chip = GameChipVm.From(game);
+                    recommendedGames.Insert(Math.Min(i, recommendedGames.Count), chip);
+                }
+                else
+                {
+                    chip.Update(game);
+                }
+                chip.IsCandidate = true;
+                chip.IsRecommended = true;
+            }
+
+            RefreshAssignments();
+        }
+
         /// <summary>
         /// Decides which games are visible and on which side. User picks come
         /// first, then live games, then upcoming, then finished. It packs items
@@ -270,6 +339,9 @@ namespace SportsOverlayApp.Views
                     .Where(g => !manualPicks.Contains(g.Id) && !manualHidden.Contains(g.Id))
                     .OrderBy(g => g.IsFinished ? 2 : g.IsLive ? 0 : 1)
                     .ThenByDescending(g => g.IsRecommended))
+                // Recommended (not-yet-starred) games come last, so they only
+                // take slots the starred games leave free; live ones first.
+                .Concat(recommendedGames.OrderBy(g => g.IsLive ? 0 : 1))
                 .ToList();
 
             bool split = InTaskbarMode;
@@ -289,12 +361,17 @@ namespace SportsOverlayApp.Views
 
             foreach (var game in allGames)
                 game.IsShown = left.Contains(game) || right.Contains(game);
+            foreach (var game in recommendedGames)
+                game.IsShown = left.Contains(game) || right.Contains(game);
 
             LeftPill.Visibility = left.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
             RightPill.Visibility = right.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
             // Always offered when there are games: besides picking what is
             // shown, the popup is where games get liked (♥) for recommendations.
-            OverflowToggle.Visibility = allGames.Count > 0
+            OverflowToggle.Visibility = allGames.Count > 0 || recommendedGames.Count > 0
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+            RecommendedSection.Visibility = recommendedGames.Count > 0
                 ? Visibility.Visible
                 : Visibility.Collapsed;
         }
@@ -313,6 +390,7 @@ namespace SportsOverlayApp.Views
             dismissed.Add(chip.Id);
             manualPicks.Remove(chip.Id);
             allGames.Remove(chip);
+            recommendedGames.Remove(chip); // a dismissed recommendation stays gone
             RefreshAssignments();
             e.Handled = true;
         }
@@ -403,7 +481,7 @@ namespace SportsOverlayApp.Views
         private string partsDisplay = "", pointsDisplay = "", summary = "";
         private string? rankingTooltip;
         private bool isLive, isFinished, justScored, isShown, servingHome, servingAway;
-        private bool isLiked, isRecommended;
+        private bool isLiked, isRecommended, isCandidate;
 
         public string SportIcon { get => sportIcon; set => Set(ref sportIcon, value, nameof(SportIcon)); }
         public string HomeTeam { get => homeTeam; set => Set(ref homeTeam, value, nameof(HomeTeam)); }
@@ -429,6 +507,9 @@ namespace SportsOverlayApp.Views
         public bool ServingAway { get => servingAway; set => Set(ref servingAway, value, nameof(ServingAway)); }
         public bool IsLiked { get => isLiked; set => Set(ref isLiked, value, nameof(IsLiked)); }
         public bool IsRecommended { get => isRecommended; set => Set(ref isRecommended, value, nameof(IsRecommended)); }
+        // True for a recommended game the user has NOT starred — surfaced by the
+        // discovery engine, shown only in leftover slots and the popup section.
+        public bool IsCandidate { get => isCandidate; set => Set(ref isCandidate, value, nameof(IsCandidate)); }
 
         public static GameChipVm From(GameData g)
         {

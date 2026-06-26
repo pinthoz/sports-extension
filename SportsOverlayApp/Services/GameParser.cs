@@ -44,6 +44,7 @@ namespace SportsOverlayApp.Services
                            : "Scheduled",
                     IsLive = g["isLive"]?.Value<bool>() ?? false,
                     IsFinished = g["isFinished"]?.Value<bool>() ?? false,
+                    Starred = g["starred"]?.Value<bool>() ?? true,
                     Competition = g["competition"]?.ToString() ?? "",
                     LastUpdated = DateTime.Now
                 };

@@ -300,6 +300,40 @@
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
+
+                    <StackPanel x:Name="RecommendedSection" Visibility="Collapsed">
+                        <Border Height="1" Background="#22FFFFFF" Margin="0,8"/>
+                        <TextBlock Text="★ Recommended for you:" FontSize="11"
+                                   Foreground="#FFFFD54F" Margin="0,0,0,6"/>
+                        <ItemsControl x:Name="RecommendedList">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal" Margin="0,2">
+                                        <ToggleButton IsChecked="{Binding IsLiked, Mode=OneWay}" Click="Like_Click"
+                                                      FontSize="13" Margin="0,0,6,0" VerticalAlignment="Center"
+                                                      ToolTip="Like this game to keep recommending it">
+                                            <ToggleButton.Style>
+                                                <Style TargetType="ToggleButton" BasedOn="{StaticResource FlatButton}">
+                                                    <Setter Property="Content" Value="♡"/>
+                                                    <Style.Triggers>
+                                                        <Trigger Property="IsChecked" Value="True">
+                                                            <Setter Property="Content" Value="♥"/>
+                                                            <Setter Property="Foreground" Value="#EF5350"/>
+                                                        </Trigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </ToggleButton.Style>
+                                        </ToggleButton>
+                                        <TextBlock Text="{Binding Summary}" FontSize="12" Foreground="White"
+                                                   VerticalAlignment="Center"/>
+                                        <Button Content="✕" Click="Dismiss_Click" Style="{StaticResource FlatButton}"
+                                                FontSize="11" Margin="6,0,0,0" VerticalAlignment="Center"
+                                                Foreground="#88FFFFFF" ToolTip="Not interested"/>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
                 </StackPanel>
             </Border>
         </Popup>

@@ -344,17 +344,22 @@
         stage,
         isLive,
         isFinished,
+        starred: true,
         competition: text(section, NODUEL_SEL.sportName) || title
       });
     }
     return games;
   }
 
-  function scrapeStarredGames() {
+  // includeUnstarred=false (default): only starred games — what drives the
+  // bar. =true ("discovery" mode, used by the recommendation browser on broad
+  // sport pages): every duel game, each tagged with whether it is starred.
+  function scrapeStarredGames(includeUnstarred) {
     const games = [];
     for (const match of qa(document, SEL.match)) {
       if (match.className.includes("--noDuel")) continue; // ranking rows, handled above
-      if (!q(match, SEL.starActive)) continue;
+      const starred = !!q(match, SEL.starActive);
+      if (!starred && !includeUnstarred) continue;
 
       const stage = text(match, SEL.stage);
       const stageLower = stage.toLowerCase();
@@ -407,9 +412,11 @@
         stage: stage,
         isLive,
         isFinished,
+        starred,
         competition: competitionFrom(headerEl)
       });
     }
+    // Ranking sessions stay starred-only; discovery focuses on duel games.
     return games.concat(scrapeNoDuelSections());
   }
 

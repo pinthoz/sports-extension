@@ -1,0 +1,11 @@
+<Window x:Class="SportsOverlayApp.Views.DiscoveryWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
+        Title="Sports Overlay — discovery" Height="800" Width="1100"
+        ShowInTaskbar="False" WindowStartupLocation="Manual">
+    <!-- Never shown to the user. A hidden WebView2 that rotates through the
+         sport pages the user follows and scrapes every game as a candidate
+         for recommendations. -->
+    <wv2:WebView2 x:Name="Browser"/>
+</Window>

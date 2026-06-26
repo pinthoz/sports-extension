@@ -15,6 +15,7 @@ namespace SportsOverlayApp
         private NotifyIcon? trayIcon;
         private MainWindow? overlay;
         private FlashScoreWindow? flashWindow;
+        private DiscoveryWindow? discoveryWindow;
         private ScoreServer? scoreServer;
         private DispatcherTimer? staleTimer;
         private DateTime lastDataAt = DateTime.MinValue;
@@ -42,7 +43,39 @@ namespace SportsOverlayApp
             overlay.Reposition();
 
             if (preferences.DataSource == DataSource.BuiltIn)
+            {
                 _ = StartEmbeddedScraperAsync();
+                if (preferences.EnableRecommendations)
+                    _ = StartDiscoveryScraperAsync();
+            }
+        }
+
+        /// <summary>Creates the hidden discovery browser that scrapes broad sport
+        /// pages to find recommendable (not-yet-starred) games.</summary>
+        private async System.Threading.Tasks.Task StartDiscoveryScraperAsync()
+        {
+            if (discoveryWindow != null || overlay == null) return;
+            try
+            {
+                discoveryWindow = new DiscoveryWindow
+                {
+                    ShowActivated = false,
+                    ShowInTaskbar = false,
+                    Left = -32000,
+                    Top = -32000
+                };
+                discoveryWindow.SportsProvider = () => overlay.FollowedSports();
+                discoveryWindow.CandidatesScraped += games =>
+                    Dispatcher.Invoke(() => overlay?.UpdateCandidates(games));
+                discoveryWindow.Show();
+                await discoveryWindow.InitializeAsync();
+                discoveryWindow.Hide();
+            }
+            catch (Exception ex)
+            {
+                discoveryWindow = null;
+                System.Diagnostics.Debug.WriteLine($"Discovery browser failed to start: {ex.Message}");
+            }
         }
 
         /// <summary>Handles scraped games coming from either source; only the
@@ -238,6 +271,7 @@ namespace SportsOverlayApp
             staleTimer?.Stop();
             scoreServer?.Dispose();
             flashWindow?.Shutdown();
+            discoveryWindow?.Shutdown();
             trayIcon?.Dispose();
             Current.Shutdown();
         }
