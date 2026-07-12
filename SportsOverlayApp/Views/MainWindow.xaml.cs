@@ -71,6 +71,9 @@ namespace SportsOverlayApp.Views
         public void ApplyUserPreferences(UserPreferences prefs)
         {
             preferences = prefs;
+            // Drop any recommendations still on the bar when the feature is off.
+            if (!prefs.EnableRecommendations && recommendedGames.Count > 0)
+                recommendedGames.Clear();
             Opacity = prefs.OverlayOpacity;
             var pillBrush = prefs.UseDarkTheme
                 ? new SolidColorBrush(Color.FromArgb(0xD9, 0x18, 0x18, 0x20))
@@ -341,7 +344,11 @@ namespace SportsOverlayApp.Views
                     .ThenByDescending(g => g.IsRecommended))
                 // Recommended (not-yet-starred) games come last, so they only
                 // take slots the starred games leave free; live ones first.
-                .Concat(recommendedGames.OrderBy(g => g.IsLive ? 0 : 1))
+                // Skip any that just became starred (still in both lists until
+                // the next discovery pass) so they never render twice.
+                .Concat(recommendedGames
+                    .Where(g => allGames.All(s => s.Id != g.Id))
+                    .OrderBy(g => g.IsLive ? 0 : 1))
                 .ToList();
 
             bool split = InTaskbarMode;

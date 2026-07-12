@@ -27,6 +27,15 @@ namespace SportsOverlayApp
 
             preferences = CacheService.LoadPreferences();
 
+            // The bar must read the favourites page. Reset anything else — a
+            // single-sport page saved by an older build, or the British
+            // "/favourites/" spelling that 404s — to the working URL.
+            if (preferences.FlashScoreUrl.IndexOf("/favorites", StringComparison.OrdinalIgnoreCase) < 0)
+            {
+                preferences.FlashScoreUrl = new UserPreferences().FlashScoreUrl;
+                CacheService.SavePreferences(preferences);
+            }
+
             overlay = new MainWindow();
             overlay.ApplyUserPreferences(preferences);
 
@@ -263,6 +272,18 @@ namespace SportsOverlayApp
                 StartScoreServer(preferences.WebSocketPort);
                 if (preferences.DataSource == DataSource.BuiltIn && flashWindow == null)
                     _ = StartEmbeddedScraperAsync();
+
+                // Apply the recommendations toggle live: start the discovery
+                // browser if just enabled, or tear it down if just disabled.
+                bool discoveryWanted = preferences.DataSource == DataSource.BuiltIn
+                                       && preferences.EnableRecommendations;
+                if (discoveryWanted && discoveryWindow == null)
+                    _ = StartDiscoveryScraperAsync();
+                else if (!discoveryWanted && discoveryWindow != null)
+                {
+                    discoveryWindow.Shutdown();
+                    discoveryWindow = null;
+                }
             }
         }
 

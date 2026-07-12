@@ -158,6 +158,20 @@
     return el ? el.textContent.trim() : "";
   }
 
+  // Participant name only. Newer FlashScore rows wrap extra bits inside the
+  // participant cell (crest <img>, and status SVGs whose <title> reads e.g.
+  // "Advancing to next round: Argentina") which would otherwise be swept into
+  // textContent. Prefer the dedicated name node; classic rows keep the name as
+  // the cell's direct text, so fall back to textContent there.
+  function participantText(root, selectors) {
+    const el = q(root, selectors);
+    if (!el) return "";
+    const nameEl = el.querySelector(
+      "[data-testid='wcl-scores-simple-text-01'], [class*='wcl-name'], [class*='participantName']"
+    );
+    return ((nameEl || el).textContent || "").trim().replace(/\s+/g, " ");
+  }
+
   // FlashScore marks nationality with a CSS-sprite span carrying the
   // country name in its title (e.g. <span class="flag fl_24" title="Australia">).
   // Map that name to an ISO 3166-1 alpha-2 code so it can be shown as a flag image.
@@ -357,11 +371,13 @@
         }
       }
 
+      const home = participantText(match, SEL.home);
+      const away = participantText(match, SEL.away);
       games.push({
-        id: match.id || `${text(match, SEL.home)}-${text(match, SEL.away)}`,
+        id: match.id || `${home}-${away}`,
         sport,
-        home: text(match, SEL.home),
-        away: text(match, SEL.away),
+        home,
+        away,
         homeFlag: flagOf(match, SEL.homeFlag),
         awayFlag: flagOf(match, SEL.awayFlag),
         homeLogo: logoUrl(match, SEL.homeLogo),

@@ -27,8 +27,9 @@ namespace SportsOverlayApp.Models
         public double TaskbarOffsetRight { get; set; } = 280;
         public DataSource DataSource { get; set; } = DataSource.BuiltIn;
         // Page the embedded browser opens; the favourites page aggregates
-        // starred games across all sports.
-        public string FlashScoreUrl { get; set; } = "https://www.flashscore.com/favourites/";
+        // starred games across all sports. Note FlashScore's real path is the
+        // American spelling ("/favorites/"); "/favourites/" 404s.
+        public string FlashScoreUrl { get; set; } = "https://www.flashscore.com/favorites/";
         // When on (and using the built-in browser), a hidden discovery browser
         // scans the sports you follow for games to recommend without starring.
         public bool EnableRecommendations { get; set; } = true;

@@ -28,6 +28,7 @@ namespace SportsOverlayApp.Views
             DarkModeToggle.IsChecked = preferences.UseDarkTheme;
             OpacitySlider.Value = preferences.OverlayOpacity * 100;
             NotificationsToggle.IsChecked = preferences.EnableNotifications;
+            RecommendationsToggle.IsChecked = preferences.EnableRecommendations;
             StartupToggle.IsChecked = preferences.StartWithWindows;
             PortInput.Text = preferences.WebSocketPort.ToString();
         }
@@ -46,6 +47,7 @@ namespace SportsOverlayApp.Views
             preferences.UseDarkTheme = DarkModeToggle.IsChecked ?? true;
             preferences.OverlayOpacity = OpacitySlider.Value / 100.0;
             preferences.EnableNotifications = NotificationsToggle.IsChecked ?? true;
+            preferences.EnableRecommendations = RecommendationsToggle.IsChecked ?? true;
             preferences.StartWithWindows = StartupToggle.IsChecked ?? false;
 
             if (int.TryParse(PortInput.Text, out var port) && port >= 1024 && port <= 65535)

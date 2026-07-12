@@ -1,7 +1,7 @@
 <Window x:Class="SportsOverlayApp.Views.SettingsWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Sports Overlay: Settings" Height="460" Width="420"
+        Title="Sports Overlay: Settings" Height="490" Width="420"
         WindowStartupLocation="CenterScreen" ResizeMode="NoResize"
         Background="#FF1E1E26">
     <StackPanel Margin="24">
@@ -25,6 +25,7 @@
                 TickFrequency="5" IsSnapToTickEnabled="True"/>
 
         <CheckBox x:Name="NotificationsToggle" Content="Highlight goals (chip turns green for ~90s, no sound)" Foreground="White" Margin="0,0,0,8"/>
+        <CheckBox x:Name="RecommendationsToggle" Content="Recommend games I follow but haven't starred (★)" Foreground="White" Margin="0,0,0,8"/>
         <CheckBox x:Name="StartupToggle" Content="Start with Windows" Foreground="White" Margin="0,0,0,12"/>
 
         <TextBlock Text="WebSocket port (must match the extension popup):" Foreground="White"/>

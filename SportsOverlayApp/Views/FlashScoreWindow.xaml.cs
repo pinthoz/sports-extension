@@ -23,7 +23,7 @@ namespace SportsOverlayApp.Views
     {
         private readonly DispatcherTimer scrapeTimer;
         private readonly string scrapeScript;
-        private string startUrl;
+        private readonly string startUrl;
 
         public event Action<List<GameData>>? GamesScraped;
 
@@ -54,6 +54,13 @@ namespace SportsOverlayApp.Views
         private async Task ScrapeAsync()
         {
             if (Browser.CoreWebView2 == null) return;
+            // Only the favourites page lists every starred game across all
+            // sports. While the user browses other tabs to star games, hold the
+            // bar's last good state instead of narrowing it to that one sport.
+            var src = Browser.CoreWebView2.Source ?? "";
+            if (src.IndexOf("favourites", StringComparison.OrdinalIgnoreCase) < 0
+                && src.IndexOf("favorites", StringComparison.OrdinalIgnoreCase) < 0)
+                return;
             try
             {
                 var raw = await Browser.CoreWebView2.ExecuteScriptAsync(scrapeScript);
@@ -81,17 +88,25 @@ namespace SportsOverlayApp.Views
 
         private void OnClosing(object? sender, CancelEventArgs e)
         {
-            // Keep scraping in the background; remember where the user navigated.
+            // Keep scraping in the background — but always from the favourites
+            // page. The user can browse to any sport tab to star games; when
+            // they close this window we navigate back to Favourites so every
+            // starred game (across all sports) shows up on the bar, even if
+            // they forgot to return to the Favourites tab first.
             e.Cancel = true;
-            var url = Browser.CoreWebView2?.Source;
-            if (!string.IsNullOrEmpty(url))
-            {
-                startUrl = url!;
-                var prefs = CacheService.LoadPreferences();
-                prefs.FlashScoreUrl = url!;
-                CacheService.SavePreferences(prefs);
-            }
+            NavigateToFavourites();
             Hide();
+        }
+
+        private void NavigateToFavourites()
+        {
+            if (Browser.CoreWebView2 == null) return;
+            var current = Browser.CoreWebView2.Source ?? "";
+            // FlashScore uses both spellings depending on locale (favourites/favorites).
+            bool onFavourites = current.Contains("favourites", StringComparison.OrdinalIgnoreCase)
+                                || current.Contains("favorites", StringComparison.OrdinalIgnoreCase);
+            if (!onFavourites)
+                Browser.CoreWebView2.Navigate(startUrl);
         }
 
         public void Shutdown()
