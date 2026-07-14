@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Threading;
 using System.Windows;
 using System.Windows.Forms;
 using System.Windows.Threading;
@@ -20,10 +21,24 @@ namespace SportsOverlayApp
         private DispatcherTimer? staleTimer;
         private DateTime lastDataAt = DateTime.MinValue;
         private UserPreferences preferences = new();
+        private Mutex? singleInstanceMutex;
 
         protected override void OnStartup(StartupEventArgs e)
         {
             base.OnStartup(e);
+
+            // Single instance: two copies would fight over the WebView2 profile
+            // folder (locked across processes), leaving the extra ones offline
+            // with no games. If one is already running, just quit — its bar is
+            // already on screen.
+            singleInstanceMutex = new Mutex(true, @"Local\SportsOverlayApp_SingleInstance", out bool isNew);
+            if (!isNew)
+            {
+                singleInstanceMutex.Dispose();
+                singleInstanceMutex = null;
+                Shutdown();
+                return;
+            }
 
             preferences = CacheService.LoadPreferences();
 
@@ -301,7 +316,15 @@ namespace SportsOverlayApp
         {
             staleTimer?.Stop();
             scoreServer?.Dispose();
+            flashWindow?.Shutdown();
+            discoveryWindow?.Shutdown();
             trayIcon?.Dispose();
+            if (singleInstanceMutex != null)
+            {
+                singleInstanceMutex.ReleaseMutex();
+                singleInstanceMutex.Dispose();
+                singleInstanceMutex = null;
+            }
             base.OnExit(e);
         }
     }
