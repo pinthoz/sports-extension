@@ -582,6 +582,24 @@ namespace SportsOverlayApp.Views
         private static string Abbreviate(string name, int max = 11)
         {
             if (name.Length <= max) return name;
+
+            // Doubles ("Borges N. / Cabral F.") only fits as the two surnames.
+            // Collapsing it word-by-word like a club name would mangle it into
+            // something like "B. N. /...", so handle the pair as a special case
+            // and give it a wider budget — a pair needs more room than one name.
+            if (name.Contains('/'))
+            {
+                var sides = name.Split('/')
+                    .Select(s => s.Trim())
+                    .Where(s => s.Length > 0)
+                    .Select(s => s.Split(' ')[0]);
+                var pair = string.Join("/", sides);
+                int pairMax = max + 6;
+                return pair.Length <= pairMax
+                    ? pair
+                    : pair.Substring(0, pairMax - 1).TrimEnd() + "…";
+            }
+
             var words = name.Split(' ');
             for (int i = 0; i < words.Length - 1; i++)
             {

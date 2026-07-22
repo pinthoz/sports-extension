@@ -33,8 +33,9 @@
     homeScore: [".event__score--home", "[class*='score'][class*='home']"],
     awayScore: [".event__score--away", "[class*='score'][class*='away']"],
     stage: [".event__stage--block", ".event__stage", ".event__time", "[class*='stage']"],
-    homeFlag: [".event__logo--home.flag", "[class*='participant--home'] .flag"],
-    awayFlag: [".event__logo--away.flag", "[class*='participant--away'] .flag"],
+    // "--home1"/"--home2" are the doubles variants of the flag sprite.
+    homeFlag: [".event__logo--home.flag", "[class*='event__logo--home'].flag", "[class*='participant--home'] .flag"],
+    awayFlag: [".event__logo--away.flag", "[class*='event__logo--away'].flag", "[class*='participant--away'] .flag"],
     // Crests are either an <img> nested inside the participant cell (football
     // club badges) or a sibling <img class="event__logo--home/away"> without
     // the "flag" class (basketball etc.; the "flag" variant is a <span>
@@ -198,13 +199,28 @@
   // "Advancing to next round: Argentina") which would otherwise be swept into
   // textContent. Prefer the dedicated name node; classic rows keep the name as
   // the cell's direct text, so fall back to textContent there.
+  const NAME_SEL = [
+    "[data-testid='wcl-scores-simple-text-01']",
+    "[class*='wcl-name']",
+    "[class*='participantName']"
+  ];
+
+  // Joins every player on one side into a single name ("Borges N. / Cabral F.").
+  // Two doubles layouts exist: the classic one repeats the participant cell per
+  // player (event__participant--home1 / --home2), while the newer one keeps both
+  // names as separate name nodes inside a single cell. Handle both, and prefer
+  // the inner name node so icon/SVG <title> text never leaks into the name.
   function participantText(root, selectors) {
-    const el = q(root, selectors);
-    if (!el) return "";
-    const nameEl = el.querySelector(
-      "[data-testid='wcl-scores-simple-text-01'], [class*='wcl-name'], [class*='participantName']"
-    );
-    return ((nameEl || el).textContent || "").trim().replace(/\s+/g, " ");
+    const names = [];
+    for (const cell of qa(root, selectors)) {
+      const inner = qa(cell, NAME_SEL);
+      const sources = inner.length ? inner : [cell];
+      for (const node of sources) {
+        const t = (node.textContent || "").trim().replace(/\s+/g, " ");
+        if (t) names.push(t);
+      }
+    }
+    return names.join(" / ");
   }
 
   // FlashScore marks nationality with a CSS-sprite span carrying the
