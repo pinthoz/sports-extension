@@ -14,7 +14,8 @@ namespace SportsOverlayApp.Services
         public string HomeTeam { get; set; } = "";
         public string AwayTeam { get; set; } = "";
         // "star" (starred on FlashScore — the passive default signal),
-        // "like" (explicit ♥ in the popup) or "pin" (picked via the popup).
+        // "like" (explicit ♥ in the popup), "pin" (picked via the popup), or
+        // "dislike" (the ✕ on a recommendation — a negative signal).
         public string Source { get; set; } = "like";
         public DateTime Timestamp { get; set; } = DateTime.Now;
     }
@@ -39,6 +40,9 @@ namespace SportsOverlayApp.Services
         // recommending every football game.
         private const double MaxCompetitionScore = 1.5, MaxSportScore = 0.5;
         private const double RecommendThreshold = 2.0;
+        // Well below the threshold, so a disliked game is never recommended and
+        // always sorts last when ranking candidates.
+        private const double DislikeScore = -1000.0;
 
         private static readonly string filePath = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -46,8 +50,11 @@ namespace SportsOverlayApp.Services
 
         private readonly List<GameInterest> records = Load();
 
+        // Dislikes are negative signals, so they don't count as "interest" for
+        // the gate or for deciding which sports to scan.
         public bool HasEnoughData =>
-            records.GroupBy(r => r.Timestamp.Date).Count(d => d.Count() >= MinRecordsPerDay)
+            records.Where(r => r.Source != "dislike")
+                   .GroupBy(r => r.Timestamp.Date).Count(d => d.Count() >= MinRecordsPerDay)
                 >= MinDistinctDays;
 
         public bool IsLiked(string gameId) =>
@@ -98,6 +105,27 @@ namespace SportsOverlayApp.Services
         }
 
         /// <summary>
+        /// Records that the user is not interested in a recommended game (the ✕
+        /// on a recommendation). Persisted, so the game — and any game featuring
+        /// the same team/player — is kept out of future recommendations.
+        /// </summary>
+        public void RecordDislike(string gameId, string sport, string competition, string home, string away)
+        {
+            if (records.Any(r => r.GameId == gameId && r.Source == "dislike"))
+                return;
+            records.Add(new GameInterest
+            {
+                GameId = gameId,
+                Sport = sport,
+                Competition = competition,
+                HomeTeam = home,
+                AwayTeam = away,
+                Source = "dislike"
+            });
+            Save();
+        }
+
+        /// <summary>
         /// Records a game starred on FlashScore as a passive interest signal.
         /// The feed only ever contains starred games, so this is called for
         /// every scraped game; the once-per-game-per-day guard keeps the 2.5s
@@ -130,6 +158,12 @@ namespace SportsOverlayApp.Services
         /// </summary>
         public double Score(string sport, string competition, string home, string away)
         {
+            // A dislike on either side hard-excludes the game (and that player
+            // in any future pairing) from recommendations.
+            foreach (var r in records)
+                if (r.Source == "dislike" && (Mentions(r, home) || Mentions(r, away)))
+                    return DislikeScore;
+
             double teamScore = 0, compScore = 0, sportScore = 0;
             foreach (var r in records)
             {
@@ -137,8 +171,11 @@ namespace SportsOverlayApp.Services
                 {
                     "like" => LikeWeight,
                     "star" => StarWeight,
+                    "dislike" => 0.0,
                     _ => PinWeight
                 };
+                if (w == 0.0)
+                    continue;
                 if (Mentions(r, home) || Mentions(r, away))
                     teamScore += w;
                 else if (r.Competition != "" && Same(r.Competition, competition))
@@ -162,7 +199,7 @@ namespace SportsOverlayApp.Services
             if (!HasEnoughData)
                 return Array.Empty<string>();
             return records
-                .Where(r => r.Sport != "")
+                .Where(r => r.Sport != "" && r.Source != "dislike")
                 .GroupBy(r => r.Sport, StringComparer.OrdinalIgnoreCase)
                 .OrderByDescending(g => g.Count())
                 .Select(g => g.Key)

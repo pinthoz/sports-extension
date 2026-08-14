@@ -394,10 +394,23 @@ namespace SportsOverlayApp.Views
         private void Dismiss_Click(object sender, RoutedEventArgs e)
         {
             if ((sender as FrameworkElement)?.DataContext is not GameChipVm chip) return;
+
+            if (chip.IsCandidate)
+            {
+                // ✕ on a recommendation means "not interested". Record it as a
+                // dislike so the engine learns and never suggests this matchup
+                // (or these players) again — persisted, unlike a plain dismiss.
+                interests.RecordDislike(chip.Id, chip.Sport, chip.Competition,
+                    chip.FullHomeTeam, chip.FullAwayTeam);
+                recommendedGames.Remove(chip);
+                RefreshAssignments();
+                e.Handled = true;
+                return;
+            }
+
             dismissed.Add(chip.Id);
             manualPicks.Remove(chip.Id);
             allGames.Remove(chip);
-            recommendedGames.Remove(chip); // a dismissed recommendation stays gone
             RefreshAssignments();
             e.Handled = true;
         }

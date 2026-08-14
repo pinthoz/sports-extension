@@ -328,7 +328,7 @@
                                                    VerticalAlignment="Center"/>
                                         <Button Content="✕" Click="Dismiss_Click" Style="{StaticResource FlatButton}"
                                                 FontSize="11" Margin="6,0,0,0" VerticalAlignment="Center"
-                                                Foreground="#88FFFFFF" ToolTip="Not interested"/>
+                                                Foreground="#88FFFFFF" ToolTip="Not interested — stop recommending this (teaches the model)"/>
                                     </StackPanel>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
