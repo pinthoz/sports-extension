@@ -40,6 +40,11 @@ namespace SportsOverlayApp.Services
         // recommending every football game.
         private const double MaxCompetitionScore = 1.5, MaxSportScore = 0.5;
         private const double RecommendThreshold = 2.0;
+        // Interest fades: a signal loses half its weight every HalfLifeDays, so
+        // recommendations follow what you star lately rather than months ago.
+        // Active favourites re-record daily (see RecordStar), so they stay fresh;
+        // only abandoned interests decay away.
+        private const double HalfLifeDays = 30.0;
         // Well below the threshold, so a disliked game is never recommended and
         // always sorts last when ranking candidates.
         private const double DislikeScore = -1000.0;
@@ -158,8 +163,9 @@ namespace SportsOverlayApp.Services
         /// </summary>
         public double Score(string sport, string competition, string home, string away)
         {
-            // A dislike on either side hard-excludes the game (and that player
-            // in any future pairing) from recommendations.
+            // A dislike hard-excludes that exact matchup. It stays pairing-
+            // specific (not per-player) so disliking a doubles pair never
+            // suppresses a player you like elsewhere.
             foreach (var r in records)
                 if (r.Source == "dislike" && (Mentions(r, home) || Mentions(r, away)))
                     return DislikeScore;
@@ -176,7 +182,8 @@ namespace SportsOverlayApp.Services
                 };
                 if (w == 0.0)
                     continue;
-                if (Mentions(r, home) || Mentions(r, away))
+                w *= Recency(r); // older signals count for less
+                if (SharesParticipant(r, home, away))
                     teamScore += w;
                 else if (r.Competition != "" && Same(r.Competition, competition))
                     compScore += w * 0.5;
@@ -206,8 +213,34 @@ namespace SportsOverlayApp.Services
                 .ToList();
         }
 
+        // Exponential decay by age: 1.0 today, 0.5 at HalfLifeDays, and so on.
+        private static double Recency(GameInterest r)
+        {
+            var ageDays = (DateTime.Now - r.Timestamp).TotalDays;
+            return ageDays <= 0 ? 1.0 : Math.Pow(2.0, -ageDays / HalfLifeDays);
+        }
+
         private static bool Mentions(GameInterest r, string team) =>
             team != "" && (Same(r.HomeTeam, team) || Same(r.AwayTeam, team));
+
+        private static readonly char[] PlayerSep = { '/' };
+
+        // Individual players in a participant name ("Borges N. / Cabral F." -> 2).
+        private static IEnumerable<string> Players(string team) =>
+            team.Split(PlayerSep, StringSplitOptions.RemoveEmptyEntries).Select(p => p.Trim());
+
+        // True if the record and the candidate share any player, so a positive
+        // signal on a player follows them to their other games — a doubles match
+        // with a different partner, or their singles — and vice versa.
+        private static bool SharesParticipant(GameInterest r, string home, string away)
+        {
+            var recorded = Players(r.HomeTeam).Concat(Players(r.AwayTeam)).ToList();
+            foreach (var c in Players(home).Concat(Players(away)))
+                foreach (var rp in recorded)
+                    if (c.Length > 0 && Same(c, rp))
+                        return true;
+            return false;
+        }
 
         private static bool Same(string a, string b) =>
             string.Equals(a.Trim(), b.Trim(), StringComparison.OrdinalIgnoreCase);
