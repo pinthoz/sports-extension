@@ -15,10 +15,10 @@ namespace SportsOverlayApp.Views
 {
     /// <summary>
     /// Hidden browser that powers recommendations. It rotates through the
-    /// FlashScore pages of the sports the user follows, scraping every game
-    /// (not just starred ones) so the recommendation engine has candidates to
-    /// score. Shares the main embedded browser's user-data folder, so the
-    /// user's FlashScore login carries over.
+    /// FlashScore pages of the sports the user follows, today and then
+    /// tomorrow, scraping every game (not just starred ones) so the
+    /// recommendation engine has candidates to score. Uses its own profile:
+    /// these public pages need no login.
     /// </summary>
     public partial class DiscoveryWindow : Window
     {
@@ -29,15 +29,26 @@ namespace SportsOverlayApp.Views
             ["rugby"] = "rugby-union",
         };
 
+        // Today plus this many following days are scanned per sport.
+        private const int DaysAhead = 1;
+
+        // FlashScore's "Next day" arrow in the sport page's date picker. It
+        // switches the list client-side (no navigation), so the page's URL no
+        // longer names the sport; the current step is tracked here instead.
+        private const string NextDayScript =
+            "(() => { const b = document.querySelector(\"[data-day-picker-arrow='next']\");" +
+            " if (!b) return false; b.click(); return true; })()";
+
         private readonly DispatcherTimer timer;
         private readonly string discoverScript;
-        private List<string> sportUrls = new();
-        private int index;
+        private List<string> sports = new();
+        private int step; // sport index * (DaysAhead + 1) + day offset
         private bool ready;
+        private bool dayShifted; // the last "next day" click actually happened
 
-        // Latest candidates per sport, so a fresh scrape of one sport replaces
-        // only that sport's games and the union is what gets published.
-        private readonly Dictionary<string, List<GameData>> bySport = new();
+        // Latest candidates per (sport, day), so a fresh scrape of one page
+        // replaces only that page's games and the union is what gets published.
+        private readonly Dictionary<(string sport, int day), List<GameData>> byPage = new();
 
         /// <summary>Supplies the current set of followed sports (re-read each rotation).</summary>
         public Func<IReadOnlyList<string>>? SportsProvider;
@@ -51,16 +62,13 @@ namespace SportsOverlayApp.Views
             var scraper = File.ReadAllText(
                 Path.Combine(AppContext.BaseDirectory, "Resources", "scraper.js"));
             discoverScript = "window.__discoverMode = true;\n" + scraper;
-            // One sport per tick: scrape what finished loading, then move on.
+            // One page per tick: scrape what finished loading, then move on.
             timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(8) };
             timer.Tick += async (s, e) => await TickAsync();
         }
 
         public async Task InitializeAsync()
         {
-            // Its own profile folder: discovery only reads public sport pages
-            // (no login needed), and a separate folder avoids any clash with the
-            // main embedded browser sharing one WebView2 user-data directory.
             var dataDir = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                 "SportsOverlay", "WebView2-Discovery");
@@ -69,48 +77,55 @@ namespace SportsOverlayApp.Views
             Browser.CoreWebView2.IsMuted = true;
             ready = true;
             RefreshSports();
-            if (sportUrls.Count > 0)
-                Browser.CoreWebView2.Navigate(sportUrls[0]);
+            if (sports.Count > 0)
+                Browser.CoreWebView2.Navigate(UrlFor(sports[0]));
             timer.Start();
         }
 
+        private static string UrlFor(string sport) =>
+            $"https://www.flashscore.com/{(SportSlug.TryGetValue(sport, out var slug) ? slug : sport)}/";
+
+        private int StepCount => sports.Count * (DaysAhead + 1);
+
         private void RefreshSports()
         {
-            var sports = SportsProvider?.Invoke() ?? Array.Empty<string>();
-            var urls = sports
-                .Select(sp => SportSlug.TryGetValue(sp, out var slug) ? slug : sp)
-                .Where(slug => slug != "")
-                .Distinct()
-                .Select(slug => $"https://www.flashscore.com/{slug}/")
+            var current = (SportsProvider?.Invoke() ?? Array.Empty<string>())
+                .Where(sp => sp != "")
+                .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
-            if (urls.SequenceEqual(sportUrls)) return;
-            sportUrls = urls;
-            index = 0;
+            if (current.SequenceEqual(sports, StringComparer.OrdinalIgnoreCase)) return;
+            sports = current;
+            step = 0;
             // Drop candidates for sports no longer followed.
-            foreach (var key in bySport.Keys.Where(k => !sports.Contains(k, StringComparer.OrdinalIgnoreCase)).ToList())
-                bySport.Remove(key);
+            foreach (var key in byPage.Keys.Where(k => !sports.Contains(k.sport, StringComparer.OrdinalIgnoreCase)).ToList())
+                byPage.Remove(key);
         }
 
         private async Task TickAsync()
         {
             if (!ready || Browser.CoreWebView2 == null) return;
-            if (index == 0) RefreshSports();
-            if (sportUrls.Count == 0) return;
+            if (step == 0) RefreshSports();
+            if (sports.Count == 0) return;
+
+            var sport = sports[step / (DaysAhead + 1)];
+            var day = step % (DaysAhead + 1);
 
             try
             {
                 // Scrape the page that has been loading since the last tick.
-                var raw = await Browser.CoreWebView2.ExecuteScriptAsync(discoverScript);
-                var json = JsonConvert.DeserializeObject<string>(raw);
-                if (!string.IsNullOrEmpty(json))
+                // A later day only counts if the date picker really moved.
+                if (day == 0 || dayShifted)
                 {
-                    var games = GameParser.FromJArray(JArray.Parse(json));
-                    var sport = SportFromUrl(Browser.CoreWebView2.Source);
-                    if (sport != "")
+                    var raw = await Browser.CoreWebView2.ExecuteScriptAsync(discoverScript);
+                    var json = JsonConvert.DeserializeObject<string>(raw);
+                    if (!string.IsNullOrEmpty(json))
                     {
-                        bySport[sport] = games;
-                        CandidatesScraped?.Invoke(bySport.Values.SelectMany(g => g).ToList());
+                        var games = GameParser.FromJArray(JArray.Parse(json));
+                        if (day > 0)
+                            games = LaterDay(games, day, byPage.GetValueOrDefault((sport, day - 1)));
+                        byPage[(sport, day)] = games;
+                        CandidatesScraped?.Invoke(byPage.Values.SelectMany(g => g).ToList());
                     }
                 }
             }
@@ -119,23 +134,47 @@ namespace SportsOverlayApp.Views
                 System.Diagnostics.Debug.WriteLine($"Discovery scrape error: {ex.Message}");
             }
 
-            // Advance to the next sport and let it load before the next tick.
-            index = (index + 1) % sportUrls.Count;
-            Browser.CoreWebView2.Navigate(sportUrls[index]);
+            // Advance: the next day of the same sport is one click away; a new
+            // sport is a fresh navigation (which always opens on today).
+            step = (step + 1) % StepCount;
+            if (step % (DaysAhead + 1) == 0)
+            {
+                dayShifted = false;
+                Browser.CoreWebView2.Navigate(UrlFor(sports[step / (DaysAhead + 1)]));
+            }
+            else
+            {
+                try
+                {
+                    dayShifted = await Browser.CoreWebView2.ExecuteScriptAsync(NextDayScript) == "true";
+                }
+                catch
+                {
+                    dayShifted = false;
+                }
+            }
         }
 
-        private static string SportFromUrl(string url)
+        /// <summary>
+        /// Tags games from a later day. Their stage is just a kick-off time, so
+        /// it gets the weekday prepended to not read as today. Games also seen
+        /// on the previous day's page are dropped: that means the click didn't
+        /// switch the list in time and this is still the earlier day.
+        /// </summary>
+        private static List<GameData> LaterDay(List<GameData> games, int day, List<GameData>? previousDay)
         {
-            try
+            var seen = new HashSet<string>(previousDay?.Select(g => g.Id) ?? Enumerable.Empty<string>());
+            var weekday = DateTime.Today.AddDays(day).ToString("ddd");
+            var result = new List<GameData>();
+            foreach (var g in games)
             {
-                var slug = new Uri(url).AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? "";
-                var pair = SportSlug.FirstOrDefault(kv => string.Equals(kv.Value, slug, StringComparison.OrdinalIgnoreCase));
-                return pair.Key ?? slug;
+                if (seen.Contains(g.Id)) continue;
+                g.DayOffset = day;
+                if (!g.IsLive && !g.IsFinished)
+                    g.Time = $"{weekday} {g.Time}";
+                result.Add(g);
             }
-            catch
-            {
-                return "";
-            }
+            return result;
         }
 
         public void Shutdown()

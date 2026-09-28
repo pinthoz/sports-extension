@@ -269,6 +269,9 @@ namespace SportsOverlayApp.Views
             RefreshAssignments();
         }
 
+        /// <summary>The live interest model, shared with the Interests window.</summary>
+        public InterestTracker Interests => interests;
+
         /// <summary>Sports the user follows, for the discovery browser to scan.</summary>
         public IReadOnlyList<string> FollowedSports() =>
             preferences.EnableRecommendations ? interests.FollowedSports() : Array.Empty<string>();
@@ -296,6 +299,7 @@ namespace SportsOverlayApp.Views
                 .Select(g => (game: g, score: interests.Score(g.Sport, g.Competition, g.HomeTeam, g.AwayTeam)))
                 .Where(t => interests.MeetsThreshold(t.score))
                 .OrderBy(t => t.game.IsFinished ? 1 : 0)
+                .ThenBy(t => t.game.DayOffset) // today before tomorrow
                 .ThenByDescending(t => t.score)
                 .Take(Math.Max(0, preferences.MaxRecommendations))
                 .Select(t => t.game)

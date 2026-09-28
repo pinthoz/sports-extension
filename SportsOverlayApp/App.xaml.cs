@@ -227,6 +227,7 @@ namespace SportsOverlayApp
             contextMenu.Items.Add("Choose Games (FlashScore)...", null, (s, a) => OpenFlashScoreWindow());
             contextMenu.Items.Add("Show/Hide Bar", null, (s, a) => ToggleOverlay());
             contextMenu.Items.Add("-");
+            contextMenu.Items.Add("What I've learned...", null, (s, a) => OpenInterests());
             contextMenu.Items.Add("Settings", null, (s, a) => OpenSettings());
             contextMenu.Items.Add("-");
             contextMenu.Items.Add("Exit", null, (s, a) => ShutdownApp());
@@ -274,6 +275,20 @@ namespace SportsOverlayApp
                 overlay.Show();
                 overlay.Reposition();
             }
+        }
+
+        private InterestsWindow? interestsWindow;
+
+        private void OpenInterests()
+        {
+            if (overlay == null) return;
+            if (interestsWindow == null)
+            {
+                interestsWindow = new InterestsWindow(overlay.Interests);
+                interestsWindow.Closed += (s, e) => interestsWindow = null;
+                interestsWindow.Show();
+            }
+            interestsWindow.Activate();
         }
 
         private void OpenSettings()

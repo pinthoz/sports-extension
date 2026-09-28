@@ -51,6 +51,9 @@ namespace SportsOverlayApp.Models
         // Set by the recommendation engine for an unstarred candidate that
         // matches the user's interest profile.
         public bool IsRecommendedCandidate { get; set; }
+        // Days from today the game is played on (discovery also scans
+        // tomorrow, so upcoming games can be recommended ahead of time).
+        public int DayOffset { get; set; }
         public DateTime LastUpdated { get; set; } = DateTime.Now;
     }
 }

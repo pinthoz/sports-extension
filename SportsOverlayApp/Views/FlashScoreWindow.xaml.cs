@@ -24,6 +24,7 @@ namespace SportsOverlayApp.Views
         private readonly DispatcherTimer scrapeTimer;
         private readonly string scrapeScript;
         private readonly string startUrl;
+        private bool cookieResetTried;
 
         public event Action<List<GameData>>? GamesScraped;
 
@@ -47,8 +48,28 @@ namespace SportsOverlayApp.Views
             var env = await CoreWebView2Environment.CreateAsync(null, dataDir);
             await Browser.EnsureCoreWebView2Async(env);
             Browser.CoreWebView2.IsMuted = true;
+            Browser.CoreWebView2.NavigationCompleted += OnNavigationCompleted;
             Browser.CoreWebView2.Navigate(startUrl);
             scrapeTimer.Start();
+        }
+
+        private async void OnNavigationCompleted(object? sender, CoreWebView2NavigationCompletedEventArgs e)
+        {
+            if (e.IsSuccess)
+            {
+                cookieResetTried = false;
+                return;
+            }
+            // FlashScore answers 400 when the request's Cookie header grows too
+            // large (tracking/consent cookies pile up in the persistent profile).
+            // Drop the site's cookies and retry once; the user may need to log in again.
+            if (e.HttpStatusCode != 400 || cookieResetTried) return;
+            cookieResetTried = true;
+            var manager = Browser.CoreWebView2.CookieManager;
+            var cookies = await manager.GetCookiesAsync("https://www.flashscore.com");
+            foreach (var cookie in cookies)
+                manager.DeleteCookie(cookie);
+            Browser.CoreWebView2.Navigate(startUrl);
         }
 
         private async Task ScrapeAsync()
