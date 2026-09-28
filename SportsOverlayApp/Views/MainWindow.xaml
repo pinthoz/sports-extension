@@ -59,7 +59,7 @@
         </Style>
 
         <DataTemplate x:Key="ChipTemplate">
-            <Border CornerRadius="6" Margin="2,4" Padding="7,2" VerticalAlignment="Center"
+            <Border CornerRadius="6" Margin="2,4" Padding="7,2" VerticalAlignment="Center" Cursor="Hand"
                     ToolTip="{Binding RankingTooltip}" ToolTipService.ShowDuration="60000">
                 <Border.Style>
                     <Style TargetType="Border">
@@ -98,6 +98,9 @@
                     <TextBlock Text="★" FontSize="10" Foreground="#FFFFD54F" Margin="0,0,3,0"
                                VerticalAlignment="Center" ToolTip="Recommended for you"
                                Visibility="{Binding IsRecommended, Converter={StaticResource BoolToVis}}"/>
+                    <TextBlock Text="⚑" FontSize="10" Foreground="#FF81C784" Margin="0,0,3,0"
+                               VerticalAlignment="Center" ToolTip="A team or player you follow"
+                               Visibility="{Binding IsFollowed, Converter={StaticResource BoolToVis}}"/>
                     <TextBlock Text="{Binding SportIcon}" FontSize="12" Margin="0,0,4,0"
                                VerticalAlignment="Center"/>
                     <Image Source="{Binding HomeLogoUrl}">
@@ -232,7 +235,7 @@
 
     <!-- The window spans the whole taskbar width; everything outside the pills is
          fully transparent, so clicks there fall through to the taskbar icons. -->
-    <Grid>
+    <Grid x:Name="Root">
         <StackPanel x:Name="LeftGroup" Orientation="Horizontal"
                     HorizontalAlignment="Left" VerticalAlignment="Center">
             <Border x:Name="LeftPill" Style="{StaticResource PillStyle}"

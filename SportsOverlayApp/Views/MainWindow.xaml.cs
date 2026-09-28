@@ -37,6 +37,11 @@ namespace SportsOverlayApp.Views
         private readonly HashSet<string> dismissed = new();
         private readonly List<string> manualPicks = new();   // user-pinned, highest priority
         private readonly HashSet<string> manualHidden = new(); // user-unchecked, never auto-shown
+        // Followed-team games closed with ✕: hidden for this session only (a
+        // followed team isn't "not interesting"). Unlike `dismissed`, these are
+        // never in the starred feed, so they aren't pruned against it.
+        private readonly HashSet<string> dismissedCandidates = new();
+        private List<GameData> lastCandidates = new();
         private readonly InterestTracker interests = new();
         private UserPreferences preferences = new();
         private DispatcherTimer? topmostTimer;
@@ -65,7 +70,78 @@ namespace SportsOverlayApp.Views
                         ReassertTopmost();
                 };
                 topmostTimer.Start();
+
+                fullscreenTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+                fullscreenTimer.Tick += (s2, e2) => UpdateFullscreenHiding();
+                fullscreenTimer.Start();
             };
+        }
+
+        // Hiding while another app is fullscreen
+
+        private DispatcherTimer? fullscreenTimer;
+        // While set, the bar shows over fullscreen apps (after a goal).
+        private DateTime peekUntil = DateTime.MinValue;
+        private static readonly TimeSpan GoalPeek = TimeSpan.FromSeconds(15);
+
+        [DllImport("user32.dll")] private static extern IntPtr GetForegroundWindow();
+        [DllImport("user32.dll")] private static extern bool GetWindowRect(IntPtr hWnd, out RECT rect);
+        [DllImport("user32.dll")] private static extern IntPtr MonitorFromWindow(IntPtr hWnd, uint flags);
+        [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+        private static extern bool GetMonitorInfo(IntPtr monitor, ref MONITORINFO info);
+        [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+        private static extern int GetClassName(IntPtr hWnd, System.Text.StringBuilder name, int max);
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct RECT { public int Left, Top, Right, Bottom; }
+
+        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+        private struct MONITORINFO
+        {
+            public int cbSize;
+            public RECT rcMonitor, rcWork;
+            public uint dwFlags;
+        }
+
+        private const uint MONITOR_DEFAULTTONEAREST = 2;
+
+        // The desktop and the taskbar cover the screen too but aren't "fullscreen apps".
+        private static readonly HashSet<string> ShellClasses = new() { "Progman", "WorkerW", "Shell_TrayWnd" };
+
+        /// <summary>
+        /// True when the foreground window is another app covering the whole
+        /// monitor the bar is on (a fullscreen video, game or F11 browser).
+        /// Maximized windows stop at the taskbar, so they don't count.
+        /// </summary>
+        private bool OtherAppIsFullscreen()
+        {
+            var own = new WindowInteropHelper(this).Handle;
+            var fg = GetForegroundWindow();
+            if (fg == IntPtr.Zero || fg == own) return false;
+
+            var cls = new System.Text.StringBuilder(64);
+            GetClassName(fg, cls, cls.Capacity);
+            if (ShellClasses.Contains(cls.ToString())) return false;
+
+            var monitor = MonitorFromWindow(fg, MONITOR_DEFAULTTONEAREST);
+            if (monitor != MonitorFromWindow(own, MONITOR_DEFAULTTONEAREST)) return false;
+            var info = new MONITORINFO { cbSize = Marshal.SizeOf<MONITORINFO>() };
+            if (!GetMonitorInfo(monitor, ref info) || !GetWindowRect(fg, out var r)) return false;
+            var m = info.rcMonitor;
+            return r.Left <= m.Left && r.Top <= m.Top && r.Right >= m.Right && r.Bottom >= m.Bottom;
+        }
+
+        private void UpdateFullscreenHiding()
+        {
+            bool hide = preferences.HideInFullscreen
+                        && DateTime.Now >= peekUntil
+                        && OtherAppIsFullscreen();
+            var visibility = hide ? Visibility.Hidden : Visibility.Visible;
+            if (Root.Visibility != visibility)
+            {
+                Root.Visibility = visibility;
+                if (!hide) ReassertTopmost(); // come back above the fullscreen app
+            }
         }
 
         public void ApplyUserPreferences(UserPreferences prefs)
@@ -154,11 +230,21 @@ namespace SportsOverlayApp.Views
         private Point dragStart;
         private double dragStartOffset;
 
+        // A press on a chip that is released without dragging opens the game.
+        // Remembered at press time: during a drag the pill captures the mouse,
+        // so the release no longer reports which chip it started on.
+        private GameChipVm? pressedChip;
+        private const double ClickSlop = 4;
+
+        /// <summary>Raised with a game id when a chip is clicked (not dragged).</summary>
+        public event Action<string>? MatchRequested;
+
         private void Pill_MouseDown(object sender, MouseButtonEventArgs e)
         {
+            pressedChip = (e.OriginalSource as FrameworkElement)?.DataContext as GameChipVm;
+            dragStart = e.GetPosition(this);
             if (!InTaskbarMode || sender is not Border pill) return;
             draggingSide = pill.Tag as string;
-            dragStart = e.GetPosition(this);
             dragStartOffset = draggingSide == "left"
                 ? preferences.TaskbarOffsetX
                 : preferences.TaskbarOffsetRight;
@@ -185,10 +271,18 @@ namespace SportsOverlayApp.Views
 
         private void Pill_MouseUp(object sender, MouseButtonEventArgs e)
         {
-            if (draggingSide == null) return;
-            (sender as Border)?.ReleaseMouseCapture();
-            draggingSide = null;
-            CacheService.SavePreferences(preferences);
+            var chip = pressedChip;
+            pressedChip = null;
+            bool clicked = (e.GetPosition(this) - dragStart).Length < ClickSlop;
+            if (draggingSide != null)
+            {
+                (sender as Border)?.ReleaseMouseCapture();
+                draggingSide = null;
+                if (!clicked)
+                    CacheService.SavePreferences(preferences);
+            }
+            if (clicked && chip != null)
+                MatchRequested?.Invoke(chip.Id);
         }
 
         // Topmost re-assert
@@ -263,10 +357,40 @@ namespace SportsOverlayApp.Views
                 // Goals are silent: the chip just holds a green highlight for a
                 // couple of minutes (see GameChipVm.FlashGoal).
                 if (scored && GoalSports.Contains(game.Sport) && preferences.EnableNotifications)
+                {
                     chip.FlashGoal(Dispatcher);
+                    // Surface over a fullscreen app for a moment so the goal is seen.
+                    peekUntil = DateTime.Now + GoalPeek;
+                    UpdateFullscreenHiding();
+                }
             }
 
             RefreshAssignments();
+        }
+
+        /// <summary>
+        /// Upcoming games for the weekly agenda: from what discovery has seen so
+        /// far, those that are starred, feature a followed team, or clear the
+        /// recommendation threshold. Soonest first.
+        /// </summary>
+        public IReadOnlyList<AgendaItem> Agenda()
+        {
+            var starredIds = new HashSet<string>(allGames.Select(g => g.Id));
+            return lastCandidates
+                .Where(g => g.KickOff != null && g.KickOff > DateTime.Now.AddHours(-3)
+                            && g.Ranking.Count == 0)
+                .GroupBy(g => g.Id).Select(grp => grp.First())
+                .Select(g => new AgendaItem
+                {
+                    Game = g,
+                    Starred = g.Starred || starredIds.Contains(g.Id),
+                    Followed = interests.FeaturesFollowed(g.HomeTeam, g.AwayTeam),
+                    Recommended = interests.HasEnoughData
+                                  && interests.MeetsThreshold(interests.Score(g.Sport, g.Competition, g.HomeTeam, g.AwayTeam))
+                })
+                .Where(a => a.Starred || a.Followed || a.Recommended)
+                .OrderBy(a => a.Game.KickOff)
+                .ToList();
         }
 
         /// <summary>The live interest model, shared with the Interests window.</summary>
@@ -290,30 +414,38 @@ namespace SportsOverlayApp.Views
                 return;
             }
 
+            lastCandidates = candidates;
             var starredIds = new HashSet<string>(allGames.Select(g => g.Id));
+            // Games of followed teams always qualify and come first; the rest
+            // must clear the recommendation threshold. The bar only looks as
+            // far as tomorrow; the rest of the week is for the agenda.
             var picked = candidates
-                .Where(g => !g.Starred && g.Ranking.Count == 0
+                .Where(g => !g.Starred && g.Ranking.Count == 0 && g.DayOffset <= 1
                             && !starredIds.Contains(g.Id)
                             && !dismissed.Contains(g.Id)
+                            && !dismissedCandidates.Contains(g.Id)
                             && !manualHidden.Contains(g.Id))
-                .Select(g => (game: g, score: interests.Score(g.Sport, g.Competition, g.HomeTeam, g.AwayTeam)))
-                .Where(t => interests.MeetsThreshold(t.score))
+                .Select(g => (game: g,
+                              followed: interests.FeaturesFollowed(g.HomeTeam, g.AwayTeam),
+                              score: interests.Score(g.Sport, g.Competition, g.HomeTeam, g.AwayTeam)))
+                .Where(t => t.followed || interests.MeetsThreshold(t.score))
                 .OrderBy(t => t.game.IsFinished ? 1 : 0)
                 .ThenBy(t => t.game.DayOffset) // today before tomorrow
+                .ThenBy(t => t.followed ? 0 : 1)
                 .ThenByDescending(t => t.score)
                 .Take(Math.Max(0, preferences.MaxRecommendations))
-                .Select(t => t.game)
                 .ToList();
+            var followedIds = new HashSet<string>(picked.Where(t => t.followed).Select(t => t.game.Id));
 
             // Rebuild the collection in order, reusing chips by id to avoid flicker.
-            var keep = new HashSet<string>(picked.Select(g => g.Id));
+            var keep = new HashSet<string>(picked.Select(t => t.game.Id));
             for (int i = recommendedGames.Count - 1; i >= 0; i--)
                 if (!keep.Contains(recommendedGames[i].Id))
                     recommendedGames.RemoveAt(i);
 
             for (int i = 0; i < picked.Count; i++)
             {
-                var game = picked[i];
+                var game = picked[i].game;
                 var chip = recommendedGames.FirstOrDefault(c => c.Id == game.Id);
                 if (chip == null)
                 {
@@ -325,7 +457,8 @@ namespace SportsOverlayApp.Views
                     chip.Update(game);
                 }
                 chip.IsCandidate = true;
-                chip.IsRecommended = true;
+                chip.IsFollowed = followedIds.Contains(game.Id);
+                chip.IsRecommended = !chip.IsFollowed;
             }
 
             RefreshAssignments();
@@ -399,6 +532,15 @@ namespace SportsOverlayApp.Views
         {
             if ((sender as FrameworkElement)?.DataContext is not GameChipVm chip) return;
 
+            if (chip.IsCandidate && chip.IsFollowed)
+            {
+                dismissedCandidates.Add(chip.Id);
+                recommendedGames.Remove(chip);
+                RefreshAssignments();
+                e.Handled = true;
+                return;
+            }
+
             if (chip.IsCandidate)
             {
                 // ✕ on a recommendation means "not interested". Record it as a
@@ -447,6 +589,15 @@ namespace SportsOverlayApp.Views
         }
     }
 
+    /// <summary>One upcoming game in the weekly agenda, with why it's listed.</summary>
+    public class AgendaItem
+    {
+        public GameData Game { get; set; } = new();
+        public bool Starred { get; set; }
+        public bool Followed { get; set; }
+        public bool Recommended { get; set; }
+    }
+
     /// <summary>2nd/3rd place entry shown next to the leader in a ranking chip.</summary>
     public class RankingGapVm
     {
@@ -482,12 +633,39 @@ namespace SportsOverlayApp.Views
             ["motorsport"] = "\U0001F3CE"
         };
 
+        // FlashScore's competition header glues the category onto the name in
+        // capitals ("Liga PortugalPORTUGAL:", "Estoril (Portugal), clayATP - SINGLES:").
+        private static readonly System.Text.RegularExpressions.Regex GluedCategory =
+            new(@"^(?<name>.*?)(?<cat>[A-Z][A-Z0-9 .'&-]*[A-Z0-9]):\s*$");
+        private static readonly System.Text.RegularExpressions.Regex SportSuffix =
+            new(@"\s*\([A-Za-z ]+\)\s*$");
+
+        /// <summary>
+        /// Readable competition for lists: "Liga Portugal · Portugal",
+        /// "Estoril (Portugal), clay · ATP Singles".
+        /// </summary>
+        public static string PrettyCompetition(string competition)
+        {
+            var s = SportSuffix.Replace(competition ?? "", "").Trim();
+            var m = GluedCategory.Match(s);
+            if (!m.Success || m.Groups["name"].Value.Trim() == "") return s.TrimEnd(':');
+            // Keep short acronyms (ATP, WTA, MEN); title-case longer words.
+            var cat = string.Join(" ", m.Groups["cat"].Value
+                .Split(new[] { ' ', '-' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(w => w.Length <= 3 ? w : char.ToUpper(w[0]) + w.Substring(1).ToLowerInvariant()));
+            return $"{m.Groups["name"].Value.Trim()} · {cat}";
+        }
+
+        /// <summary>Emoji for a sport, for lists outside the bar.</summary>
+        public static string IconFor(string sport) =>
+            SportIcons.TryGetValue(sport, out var icon) ? icon : "\U0001F3C5";
+
         // Sports whose chip stays narrow (no per-set detail shown).
         private static readonly HashSet<string> NarrowSports = new() { "football", "futsal" };
 
         // Builds a flag image URL from a lowercase ISO2 code (e.g. "gb"); empty
         // codes (no flag for that side) map to "" so the bound Image collapses.
-        private static string FlagUrl(string iso2) => iso2 == "" ? "" : $"https://flagcdn.com/h24/{iso2}.png";
+        public static string FlagUrl(string iso2) => iso2 == "" ? "" : $"https://flagcdn.com/h24/{iso2}.png";
 
         public string Id { get; private set; } = "";
         public string Sport { get; private set; } = "football";
@@ -505,7 +683,7 @@ namespace SportsOverlayApp.Views
         private string partsDisplay = "", pointsDisplay = "", summary = "";
         private string? rankingTooltip;
         private bool isLive, isFinished, justScored, isShown, servingHome, servingAway;
-        private bool isLiked, isRecommended, isCandidate;
+        private bool isLiked, isRecommended, isCandidate, isFollowed;
 
         public string SportIcon { get => sportIcon; set => Set(ref sportIcon, value, nameof(SportIcon)); }
         public string HomeTeam { get => homeTeam; set => Set(ref homeTeam, value, nameof(HomeTeam)); }
@@ -534,6 +712,8 @@ namespace SportsOverlayApp.Views
         // True for a recommended game the user has NOT starred — surfaced by the
         // discovery engine, shown only in leftover slots and the popup section.
         public bool IsCandidate { get => isCandidate; set => Set(ref isCandidate, value, nameof(IsCandidate)); }
+        // A candidate shown because it features a team/player the user follows.
+        public bool IsFollowed { get => isFollowed; set => Set(ref isFollowed, value, nameof(IsFollowed)); }
 
         public static GameChipVm From(GameData g)
         {

@@ -66,10 +66,14 @@ namespace SportsOverlayApp.Services
 
         private readonly List<GameInterest> records = Load();
 
-        // Dislikes are negative signals, so they don't count as "interest" for
-        // the gate or for deciding which sports to scan.
+        // Signals the model learns from. Dislikes are negative and follows are
+        // explicit rules (always shown, never decaying), so neither counts as
+        // learned interest for the gate, the weights or the decay clock.
+        private static bool IsLearned(GameInterest r) =>
+            r.Source != "dislike" && r.Source != "follow";
+
         public bool HasEnoughData =>
-            records.Where(r => r.Source != "dislike")
+            records.Where(r => IsLearned(r))
                    .GroupBy(r => r.Timestamp.Date).Count(d => d.Count() >= MinRecordsPerDay)
                 >= MinDistinctDays;
 
@@ -115,6 +119,48 @@ namespace SportsOverlayApp.Services
                 return;
             records.Add(Create(gameId, sport, competition, home, away, "dislike"));
             Save();
+        }
+
+        /// <summary>Teams/players followed explicitly, with their sport.</summary>
+        public IReadOnlyList<(string name, string sport)> Follows() =>
+            records.Where(r => r.Source == "follow")
+                   .Select(r => (r.HomeTeam, r.Sport))
+                   .OrderBy(f => f.HomeTeam, StringComparer.OrdinalIgnoreCase)
+                   .ToList();
+
+        /// <summary>
+        /// Follows a team/player: every game of theirs the discovery browser
+        /// finds is shown, whether starred or not, and it never decays. Kept
+        /// in this history so it survives a FlashScore logout.
+        /// </summary>
+        public void Follow(string name, string sport)
+        {
+            name = CleanTeam(name);
+            if (name == "" || IsFollowed(name)) return;
+            records.Add(new GameInterest
+            {
+                GameId = "follow:" + name.ToLowerInvariant(),
+                Sport = sport,
+                HomeTeam = name,
+                Source = "follow"
+            });
+            Save();
+        }
+
+        public void Unfollow(string name)
+        {
+            records.RemoveAll(r => r.Source == "follow" && Same(r.HomeTeam, name));
+            Save();
+        }
+
+        public bool IsFollowed(string name) =>
+            records.Any(r => r.Source == "follow" && Same(r.HomeTeam, name));
+
+        /// <summary>True if the game features a followed team/player (doubles partners included).</summary>
+        public bool FeaturesFollowed(string home, string away)
+        {
+            var players = Players(CleanTeam(home)).Concat(Players(CleanTeam(away))).ToList();
+            return records.Any(r => r.Source == "follow" && players.Any(p => Same(p, r.HomeTeam)));
         }
 
         /// <summary>
@@ -182,7 +228,7 @@ namespace SportsOverlayApp.Services
         {
             var latest = LatestSignal();
             return records
-                .Where(r => r.Source != "dislike")
+                .Where(r => IsLearned(r))
                 .GroupBy(r => (r.GameId, r.Source))
                 .Select(g => g.OrderByDescending(r => r.Timestamp).First())
                 .Select(r => (r, (r.Source switch
@@ -242,11 +288,11 @@ namespace SportsOverlayApp.Services
             switch (entry.Kind)
             {
                 case "team":
-                    records.RemoveAll(r => r.Source != "dislike"
+                    records.RemoveAll(r => IsLearned(r)
                         && Players(r.HomeTeam).Concat(Players(r.AwayTeam)).Any(p => Same(p, entry.Name)));
                     break;
                 case "competition":
-                    records.RemoveAll(r => r.Source != "dislike" && Same(r.Competition, entry.Name));
+                    records.RemoveAll(r => IsLearned(r) && Same(r.Competition, entry.Name));
                     break;
                 case "dislike":
                     records.RemoveAll(r => r.Source == "dislike" && r.GameId == entry.GameId);
@@ -256,15 +302,16 @@ namespace SportsOverlayApp.Services
         }
 
         /// <summary>
-        /// Sports the user follows, most-recorded first. Empty until there is
-        /// enough history, so discovery stays idle until the profile is usable.
+        /// Sports the user follows, most-recorded first. Until there is enough
+        /// history only sports with an explicit follow count, so discovery
+        /// stays idle until the profile (or a follow) makes it useful.
         /// </summary>
         public IReadOnlyList<string> FollowedSports()
         {
-            if (!HasEnoughData)
-                return Array.Empty<string>();
+            bool learned = HasEnoughData;
             return records
-                .Where(r => r.Sport != "" && r.Source != "dislike")
+                .Where(r => r.Sport != "" && r.Source != "dislike"
+                            && (learned || r.Source == "follow"))
                 .GroupBy(r => r.Sport, StringComparer.OrdinalIgnoreCase)
                 .OrderByDescending(g => g.Count())
                 .Select(g => g.Key)
@@ -285,7 +332,7 @@ namespace SportsOverlayApp.Services
         {
             var latest = DateTime.MinValue;
             foreach (var r in records)
-                if (r.Source != "dislike" && r.Timestamp > latest)
+                if (IsLearned(r) && r.Timestamp > latest)
                     latest = r.Timestamp;
             return latest == DateTime.MinValue ? DateTime.Now : latest;
         }

@@ -1,0 +1,8 @@
+<Window x:Class="SportsOverlayApp.Views.MatchWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
+        Title="Match details" Height="760" Width="560"
+        Background="#FF1E1E26">
+    <wv2:WebView2 x:Name="Browser"/>
+</Window>

@@ -1,6 +1,7 @@
 using System.Windows;
 using SportsOverlayApp.Models;
 using SportsOverlayApp.Services;
+using SportsOverlayApp.Utils;
 
 namespace SportsOverlayApp.Views
 {
@@ -11,7 +12,14 @@ namespace SportsOverlayApp.Views
         public SettingsWindow()
         {
             InitializeComponent();
+            FluentWindow.Apply(this);
             LoadCurrentPreferences();
+        }
+
+        private void OpacitySlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            if (OpacityValue != null)
+                OpacityValue.Text = $"{e.NewValue:0}%";
         }
 
         private void LoadCurrentPreferences()
@@ -27,8 +35,10 @@ namespace SportsOverlayApp.Views
             };
             DarkModeToggle.IsChecked = preferences.UseDarkTheme;
             OpacitySlider.Value = preferences.OverlayOpacity * 100;
+            OpacityValue.Text = $"{OpacitySlider.Value:0}%";
             NotificationsToggle.IsChecked = preferences.EnableNotifications;
             RecommendationsToggle.IsChecked = preferences.EnableRecommendations;
+            FullscreenToggle.IsChecked = preferences.HideInFullscreen;
             StartupToggle.IsChecked = preferences.StartWithWindows;
             PortInput.Text = preferences.WebSocketPort.ToString();
         }
@@ -48,6 +58,7 @@ namespace SportsOverlayApp.Views
             preferences.OverlayOpacity = OpacitySlider.Value / 100.0;
             preferences.EnableNotifications = NotificationsToggle.IsChecked ?? true;
             preferences.EnableRecommendations = RecommendationsToggle.IsChecked ?? true;
+            preferences.HideInFullscreen = FullscreenToggle.IsChecked ?? true;
             preferences.StartWithWindows = StartupToggle.IsChecked ?? false;
 
             if (int.TryParse(PortInput.Text, out var port) && port >= 1024 && port <= 65535)

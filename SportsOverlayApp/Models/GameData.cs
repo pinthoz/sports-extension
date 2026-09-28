@@ -54,6 +54,9 @@ namespace SportsOverlayApp.Models
         // Days from today the game is played on (discovery also scans
         // tomorrow, so upcoming games can be recommended ahead of time).
         public int DayOffset { get; set; }
+        // Local kick-off time, when the page gives one (scheduled games from
+        // discovery). Used by the weekly agenda and calendar export.
+        public DateTime? KickOff { get; set; }
         public DateTime LastUpdated { get; set; } = DateTime.Now;
     }
 }

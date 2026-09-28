@@ -53,6 +53,7 @@ namespace SportsOverlayApp
 
             overlay = new MainWindow();
             overlay.ApplyUserPreferences(preferences);
+            overlay.MatchRequested += id => _ = OpenMatchAsync(id);
 
             // Show the last cached scores until fresh data arrives.
             var cached = CacheService.LoadGameData();
@@ -223,14 +224,16 @@ namespace SportsOverlayApp
                 Text = "Sports Overlay"
             };
 
-            var contextMenu = new ContextMenuStrip();
-            contextMenu.Items.Add("Choose Games (FlashScore)...", null, (s, a) => OpenFlashScoreWindow());
-            contextMenu.Items.Add("Show/Hide Bar", null, (s, a) => ToggleOverlay());
-            contextMenu.Items.Add("-");
-            contextMenu.Items.Add("What I've learned...", null, (s, a) => OpenInterests());
-            contextMenu.Items.Add("Settings", null, (s, a) => OpenSettings());
-            contextMenu.Items.Add("-");
-            contextMenu.Items.Add("Exit", null, (s, a) => ShutdownApp());
+            // Segoe Fluent Icons glyphs: FavoriteStar, View, Calendar, Lightbulb, Settings, PowerButton.
+            var contextMenu = TrayMenu.Create();
+            TrayMenu.AddItem(contextMenu, "Choose games (FlashScore)", '', OpenFlashScoreWindow);
+            TrayMenu.AddItem(contextMenu, "Show or hide the bar", '', ToggleOverlay);
+            TrayMenu.AddSeparator(contextMenu);
+            TrayMenu.AddItem(contextMenu, "This week", '', OpenAgenda);
+            TrayMenu.AddItem(contextMenu, "What I've learned", '', OpenInterests);
+            TrayMenu.AddItem(contextMenu, "Settings", '', OpenSettings);
+            TrayMenu.AddSeparator(contextMenu);
+            TrayMenu.AddItem(contextMenu, "Exit", '', ShutdownApp);
 
             trayIcon.ContextMenuStrip = contextMenu;
             trayIcon.Click += (s, args) =>
@@ -275,6 +278,40 @@ namespace SportsOverlayApp
                 overlay.Show();
                 overlay.Reposition();
             }
+        }
+
+        private MatchWindow? matchWindow;
+
+        private async System.Threading.Tasks.Task OpenMatchAsync(string gameId)
+        {
+            try
+            {
+                if (matchWindow == null)
+                {
+                    matchWindow = new MatchWindow();
+                    matchWindow.Closed += (s, e) => matchWindow = null;
+                }
+                await matchWindow.ShowMatchAsync(gameId);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Match window failed: {ex.Message}");
+            }
+        }
+
+        private AgendaWindow? agendaWindow;
+
+        private void OpenAgenda()
+        {
+            if (overlay == null) return;
+            if (agendaWindow == null)
+            {
+                agendaWindow = new AgendaWindow(overlay);
+                agendaWindow.OpenMatch += id => _ = OpenMatchAsync(id);
+                agendaWindow.Closed += (s, e) => agendaWindow = null;
+                agendaWindow.Show();
+            }
+            agendaWindow.Activate();
         }
 
         private InterestsWindow? interestsWindow;

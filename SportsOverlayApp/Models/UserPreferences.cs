@@ -35,5 +35,8 @@ namespace SportsOverlayApp.Models
         public bool EnableRecommendations { get; set; } = true;
         // Max recommended (not-yet-starred) games to surface at once.
         public int MaxRecommendations { get; set; } = 6;
+        // Hide the bar while another app is fullscreen (video, game); it
+        // briefly reappears when one of your games has a goal.
+        public bool HideInFullscreen { get; set; } = true;
     }
 }

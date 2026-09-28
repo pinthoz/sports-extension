@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Threading;
@@ -29,22 +30,31 @@ namespace SportsOverlayApp.Views
             ["rugby"] = "rugby-union",
         };
 
-        // Today plus this many following days are scanned per sport.
-        private const int DaysAhead = 1;
+        // Today plus this many following days are scanned per sport: the bar
+        // uses today and tomorrow, the weekly agenda the whole range.
+        private const int DaysAhead = 6;
 
-        // FlashScore's "Next day" arrow in the sport page's date picker. It
-        // switches the list client-side (no navigation), so the page's URL no
-        // longer names the sport; the current step is tracked here instead.
-        private const string NextDayScript =
-            "(() => { const b = document.querySelector(\"[data-day-picker-arrow='next']\");" +
-            " if (!b) return false; b.click(); return true; })()";
+        // Each sport gets two pages per rotation: today (so live scores of
+        // recommended games stay fresh) and one later day, which cycles
+        // through 1..DaysAhead across rotations to fill the week.
+        private const int PagesPerSport = 2;
+        private int laterDay = 1;
+
+        // Clicks FlashScore's "Next day" arrow n times. It switches the list
+        // client-side (no navigation), so the page's URL no longer names the
+        // sport; the current step is tracked here instead. Rapid clicks are
+        // dropped, hence the spacing (6 clicks take ~4s of the 8s tick).
+        private static string NextDaysScript(int n) =>
+            "(() => { if (!document.querySelector(\"[data-day-picker-arrow='next']\")) return false;" +
+            $" let i = 0; const go = () => {{ const b = document.querySelector(\"[data-day-picker-arrow='next']\");" +
+            $" if (b) b.click(); if (++i < {n}) setTimeout(go, 700); }}; go(); return true; }})()";
 
         private readonly DispatcherTimer timer;
         private readonly string discoverScript;
         private List<string> sports = new();
-        private int step; // sport index * (DaysAhead + 1) + day offset
+        private int step; // sport index * PagesPerSport + page (0 = today, 1 = laterDay)
         private bool ready;
-        private bool dayShifted; // the last "next day" click actually happened
+        private bool dayShifted; // the last day jump actually started
 
         // Latest candidates per (sport, day), so a fresh scrape of one page
         // replaces only that page's games and the union is what gets published.
@@ -85,7 +95,7 @@ namespace SportsOverlayApp.Views
         private static string UrlFor(string sport) =>
             $"https://www.flashscore.com/{(SportSlug.TryGetValue(sport, out var slug) ? slug : sport)}/";
 
-        private int StepCount => sports.Count * (DaysAhead + 1);
+        private int StepCount => sports.Count * PagesPerSport;
 
         private void RefreshSports()
         {
@@ -108,8 +118,8 @@ namespace SportsOverlayApp.Views
             if (step == 0) RefreshSports();
             if (sports.Count == 0) return;
 
-            var sport = sports[step / (DaysAhead + 1)];
-            var day = step % (DaysAhead + 1);
+            var sport = sports[step / PagesPerSport];
+            var day = step % PagesPerSport == 0 ? 0 : laterDay;
 
             try
             {
@@ -122,8 +132,10 @@ namespace SportsOverlayApp.Views
                     if (!string.IsNullOrEmpty(json))
                     {
                         var games = GameParser.FromJArray(JArray.Parse(json));
+                        foreach (var g in games)
+                            g.KickOff = KickOffTime(g, day);
                         if (day > 0)
-                            games = LaterDay(games, day, byPage.GetValueOrDefault((sport, day - 1)));
+                            games = LaterDay(games, day, byPage.GetValueOrDefault((sport, 0)));
                         byPage[(sport, day)] = games;
                         CandidatesScraped?.Invoke(byPage.Values.SelectMany(g => g).ToList());
                     }
@@ -134,19 +146,22 @@ namespace SportsOverlayApp.Views
                 System.Diagnostics.Debug.WriteLine($"Discovery scrape error: {ex.Message}");
             }
 
-            // Advance: the next day of the same sport is one click away; a new
-            // sport is a fresh navigation (which always opens on today).
+            // Advance: a later day of the same sport is a few clicks away; a new
+            // sport is a fresh navigation (which always opens on today). After
+            // a full rotation, the next rotation looks one day further ahead.
             step = (step + 1) % StepCount;
-            if (step % (DaysAhead + 1) == 0)
+            if (step == 0)
+                laterDay = laterDay % DaysAhead + 1;
+            if (step % PagesPerSport == 0)
             {
                 dayShifted = false;
-                Browser.CoreWebView2.Navigate(UrlFor(sports[step / (DaysAhead + 1)]));
+                Browser.CoreWebView2.Navigate(UrlFor(sports[step / PagesPerSport]));
             }
             else
             {
                 try
                 {
-                    dayShifted = await Browser.CoreWebView2.ExecuteScriptAsync(NextDayScript) == "true";
+                    dayShifted = await Browser.CoreWebView2.ExecuteScriptAsync(NextDaysScript(laterDay)) == "true";
                 }
                 catch
                 {
@@ -155,15 +170,29 @@ namespace SportsOverlayApp.Views
             }
         }
 
+        // A scheduled game's stage is its kick-off, "HH:mm" in the browser's
+        // (the user's) time zone, sometimes with a marker glued on ("14:30FRO",
+        // result-only coverage). Live/finished games have no future start.
+        private static readonly Regex KickOffStage = new(@"^(\d{1,2}):(\d{2})");
+
+        private static DateTime? KickOffTime(GameData g, int day)
+        {
+            if (g.IsLive || g.IsFinished) return null;
+            var m = KickOffStage.Match(g.Time.Trim());
+            if (!m.Success) return null;
+            int h = int.Parse(m.Groups[1].Value), min = int.Parse(m.Groups[2].Value);
+            return h < 24 && min < 60 ? DateTime.Today.AddDays(day).AddHours(h).AddMinutes(min) : null;
+        }
+
         /// <summary>
         /// Tags games from a later day. Their stage is just a kick-off time, so
         /// it gets the weekday prepended to not read as today. Games also seen
-        /// on the previous day's page are dropped: that means the click didn't
-        /// switch the list in time and this is still the earlier day.
+        /// on today's page are dropped: that means the clicks didn't switch the
+        /// list in time and this is still today.
         /// </summary>
-        private static List<GameData> LaterDay(List<GameData> games, int day, List<GameData>? previousDay)
+        private static List<GameData> LaterDay(List<GameData> games, int day, List<GameData>? today)
         {
-            var seen = new HashSet<string>(previousDay?.Select(g => g.Id) ?? Enumerable.Empty<string>());
+            var seen = new HashSet<string>(today?.Select(g => g.Id) ?? Enumerable.Empty<string>());
             var weekday = DateTime.Today.AddDays(day).ToString("ddd");
             var result = new List<GameData>();
             foreach (var g in games)
