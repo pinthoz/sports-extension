@@ -247,6 +247,16 @@
     return el ? flagCode(el.getAttribute("title") || "") : "";
   }
 
+  // Doubles show one flag per player (event__logo--home1 / --home2). Returns the
+  // partner's flag only when it differs from the first player's, so a pair from
+  // the same country still shows a single flag.
+  function secondFlagOf(root, selectors) {
+    const codes = qa(root, selectors)
+      .map(el => flagCode(el.getAttribute("title") || ""))
+      .filter(Boolean);
+    return codes.find(c => c !== codes[0]) || "";
+  }
+
   // Reads the team/participant crest <img> src, if FlashScore renders one.
   function logoUrl(root, selectors) {
     const el = q(root, selectors);
@@ -396,6 +406,8 @@
         away,
         homeFlag: flagOf(match, SEL.homeFlag),
         awayFlag: flagOf(match, SEL.awayFlag),
+        homeFlag2: secondFlagOf(match, SEL.homeFlag),
+        awayFlag2: secondFlagOf(match, SEL.awayFlag),
         homeLogo: logoUrl(match, SEL.homeLogo),
         awayLogo: logoUrl(match, SEL.awayLogo),
         homeScore: text(match, SEL.homeScore) || "-",

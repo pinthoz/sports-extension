@@ -30,6 +30,8 @@ namespace SportsOverlayApp.Services
                     AwayTeam = away,
                     HomeFlag = g["homeFlag"]?.ToString() ?? "",
                     AwayFlag = g["awayFlag"]?.ToString() ?? "",
+                    HomeFlag2 = g["homeFlag2"]?.ToString() ?? "",
+                    AwayFlag2 = g["awayFlag2"]?.ToString() ?? "",
                     HomeLogoUrl = g["homeLogo"]?.ToString() ?? "",
                     AwayLogoUrl = g["awayLogo"]?.ToString() ?? "",
                     Score = $"{homeScore}-{awayScore}",

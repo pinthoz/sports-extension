@@ -88,10 +88,12 @@
                                                         <StackPanel Grid.Column="1" Margin="8,0,0,0">
                                                             <StackPanel Orientation="Horizontal">
                                                                 <Image Source="{Binding HomeLogo}" Style="{StaticResource Crest}"/>
+                                                                <Image Source="{Binding HomeLogo2}" Style="{StaticResource Crest}"/>
                                                                 <TextBlock Text="{Binding Home}" Style="{StaticResource BodyText}" FontWeight="SemiBold"/>
                                                                 <TextBlock Text="vs" Style="{StaticResource CaptionText}" Margin="8,0"
                                                                            Foreground="{StaticResource TextTertiary}"/>
                                                                 <Image Source="{Binding AwayLogo}" Style="{StaticResource Crest}"/>
+                                                                <Image Source="{Binding AwayLogo2}" Style="{StaticResource Crest}"/>
                                                                 <TextBlock Text="{Binding Away}" Style="{StaticResource BodyText}" FontWeight="SemiBold"/>
                                                             </StackPanel>
                                                             <StackPanel Orientation="Horizontal" Margin="0,4,0,0">

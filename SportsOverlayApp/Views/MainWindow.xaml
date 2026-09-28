@@ -125,6 +125,18 @@
                             </Style>
                         </Image.Style>
                     </Image>
+                    <!-- Doubles partner from another country -->
+                    <Image Source="{Binding HomeFlag2}">
+                        <Image.Style>
+                            <Style TargetType="Image" BasedOn="{StaticResource LogoImage}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding HomeFlag2}" Value="">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Image.Style>
+                    </Image>
                     <TextBlock Text="{Binding HomeTeam}" FontSize="11" FontWeight="SemiBold"
                                Foreground="White" VerticalAlignment="Center"/>
                     <TextBlock Text="●" FontSize="10" Foreground="#FFFFD54F" Margin="3,0,0,0"
@@ -148,6 +160,17 @@
                             <Style TargetType="Image" BasedOn="{StaticResource LogoImage}">
                                 <Style.Triggers>
                                     <DataTrigger Binding="{Binding AwayFlag}" Value="">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Image.Style>
+                    </Image>
+                    <Image Source="{Binding AwayFlag2}">
+                        <Image.Style>
+                            <Style TargetType="Image" BasedOn="{StaticResource LogoImage}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding AwayFlag2}" Value="">
                                         <Setter Property="Visibility" Value="Collapsed"/>
                                     </DataTrigger>
                                 </Style.Triggers>

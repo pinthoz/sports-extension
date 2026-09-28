@@ -678,7 +678,7 @@ namespace SportsOverlayApp.Views
         public int Slots => NarrowSports.Contains(Sport) ? 1 : 2;
 
         private string sportIcon = "", homeTeam = "", awayTeam = "", score = "", time = "";
-        private string homeFlag = "", awayFlag = "";
+        private string homeFlag = "", awayFlag = "", homeFlag2 = "", awayFlag2 = "";
         private string homeLogoUrl = "", awayLogoUrl = "";
         private string partsDisplay = "", pointsDisplay = "", summary = "";
         private string? rankingTooltip;
@@ -690,6 +690,9 @@ namespace SportsOverlayApp.Views
         public string AwayTeam { get => awayTeam; set => Set(ref awayTeam, value, nameof(AwayTeam)); }
         public string HomeFlag { get => homeFlag; set => Set(ref homeFlag, value, nameof(HomeFlag)); }
         public string AwayFlag { get => awayFlag; set => Set(ref awayFlag, value, nameof(AwayFlag)); }
+        // Doubles partner's flag, when from a different country than the first player.
+        public string HomeFlag2 { get => homeFlag2; set => Set(ref homeFlag2, value, nameof(HomeFlag2)); }
+        public string AwayFlag2 { get => awayFlag2; set => Set(ref awayFlag2, value, nameof(AwayFlag2)); }
         public string HomeLogoUrl { get => homeLogoUrl; set => Set(ref homeLogoUrl, value, nameof(HomeLogoUrl)); }
         public string AwayLogoUrl { get => awayLogoUrl; set => Set(ref awayLogoUrl, value, nameof(AwayLogoUrl)); }
         public string Score { get => score; set => Set(ref score, value, nameof(Score)); }
@@ -733,6 +736,8 @@ namespace SportsOverlayApp.Views
             AwayTeam = Abbreviate(g.AwayTeam);
             HomeFlag = FlagUrl(g.HomeFlag);
             AwayFlag = FlagUrl(g.AwayFlag);
+            HomeFlag2 = FlagUrl(g.HomeFlag2);
+            AwayFlag2 = FlagUrl(g.AwayFlag2);
             HomeLogoUrl = g.HomeLogoUrl;
             AwayLogoUrl = g.AwayLogoUrl;
             Score = g.Score;
@@ -754,6 +759,8 @@ namespace SportsOverlayApp.Views
                 // the full classification.
                 AwayTeam = "";
                 AwayFlag = "";
+                HomeFlag2 = "";
+                AwayFlag2 = "";
                 AwayLogoUrl = "";
                 HomeFlag = FlagUrl(g.Ranking[0].Flag);
                 HomeLogoUrl = "";

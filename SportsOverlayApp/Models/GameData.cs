@@ -29,6 +29,9 @@ namespace SportsOverlayApp.Models
         // Nationality flag for each side, as a lowercase ISO2 code (tennis players, F1 drivers, ...).
         public string HomeFlag { get; set; } = "";
         public string AwayFlag { get; set; } = "";
+        // Doubles: the partner's flag, only when it differs from the first player's.
+        public string HomeFlag2 { get; set; } = "";
+        public string AwayFlag2 { get; set; } = "";
         // Team/participant crest image URL, when FlashScore renders one.
         public string HomeLogoUrl { get; set; } = "";
         public string AwayLogoUrl { get; set; } = "";

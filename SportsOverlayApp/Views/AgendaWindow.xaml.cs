@@ -165,6 +165,8 @@ namespace SportsOverlayApp.Views
         public string Away { get; }
         public string? HomeLogo { get; }
         public string? AwayLogo { get; }
+        public string? HomeLogo2 { get; }
+        public string? AwayLogo2 { get; }
         public string Competition { get; }
         public string SportIcon { get; }
         public string TagText { get; }
@@ -180,6 +182,9 @@ namespace SportsOverlayApp.Views
             Away = g.AwayTeam;
             HomeLogo = Logo(g.HomeLogoUrl, g.HomeFlag);
             AwayLogo = Logo(g.AwayLogoUrl, g.AwayFlag);
+            // Doubles: the partner's flag, when from another country.
+            HomeLogo2 = g.HomeLogoUrl == "" ? Logo("", g.HomeFlag2) : null;
+            AwayLogo2 = g.AwayLogoUrl == "" ? Logo("", g.AwayFlag2) : null;
             Competition = GameChipVm.PrettyCompetition(g.Competition);
             SportIcon = GameChipVm.IconFor(g.Sport);
             (TagText, TagBrush, TagFill) = item.Followed ? ("Following", FollowText, FollowFill)
