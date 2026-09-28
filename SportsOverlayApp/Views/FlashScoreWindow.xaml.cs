@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Threading;
 using Microsoft.Web.WebView2.Core;
+using SportsOverlayApp.Utils;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using SportsOverlayApp.Models;
@@ -48,6 +49,7 @@ namespace SportsOverlayApp.Views
             var env = await CoreWebView2Environment.CreateAsync(null, dataDir);
             await Browser.EnsureCoreWebView2Async(env);
             Browser.CoreWebView2.IsMuted = true;
+            await AdBlocker.ApplyAsync(Browser.CoreWebView2);
             Browser.CoreWebView2.NavigationCompleted += OnNavigationCompleted;
             Browser.CoreWebView2.Navigate(startUrl);
             scrapeTimer.Start();

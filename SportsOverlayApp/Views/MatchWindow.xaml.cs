@@ -3,6 +3,7 @@ using System.IO;
 using System.Threading.Tasks;
 using System.Windows;
 using Microsoft.Web.WebView2.Core;
+using SportsOverlayApp.Utils;
 
 namespace SportsOverlayApp.Views
 {
@@ -39,6 +40,7 @@ namespace SportsOverlayApp.Views
                     "SportsOverlay", "WebView2-Match");
                 var env = await CoreWebView2Environment.CreateAsync(null, dataDir);
                 await Browser.EnsureCoreWebView2Async(env);
+                await AdBlocker.ApplyAsync(Browser.CoreWebView2);
                 initialized = true;
             }
             // FlashScore redirects the short form to the game's canonical page.
