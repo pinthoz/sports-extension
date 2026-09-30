@@ -239,6 +239,22 @@ namespace SportsOverlayApp.Views
         /// <summary>Raised with a game id when a chip is clicked (not dragged).</summary>
         public event Action<string>? MatchRequested;
 
+        /// <summary>The ^ popup asks to open FlashScore (to star games) or its search.</summary>
+        public event Action? BrowseRequested;
+        public event Action? SearchRequested;
+
+        private void Search_Click(object sender, RoutedEventArgs e)
+        {
+            OverflowToggle.IsChecked = false; // close the popup first
+            SearchRequested?.Invoke();
+        }
+
+        private void Browse_Click(object sender, RoutedEventArgs e)
+        {
+            OverflowToggle.IsChecked = false;
+            BrowseRequested?.Invoke();
+        }
+
         private void Pill_MouseDown(object sender, MouseButtonEventArgs e)
         {
             pressedChip = (e.OriginalSource as FrameworkElement)?.DataContext as GameChipVm;
@@ -510,11 +526,11 @@ namespace SportsOverlayApp.Views
 
             LeftPill.Visibility = left.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
             RightPill.Visibility = right.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
-            // Always offered when there are games: besides picking what is
-            // shown, the popup is where games get liked (♥) for recommendations.
-            OverflowToggle.Visibility = allGames.Count > 0 || recommendedGames.Count > 0
-                ? Visibility.Visible
-                : Visibility.Collapsed;
+            // Always offered: besides picking what is shown and liking games
+            // (♥), the popup is where to search FlashScore for more games,
+            // which matters most when the bar is still empty.
+            OverflowToggle.Visibility = Visibility.Visible;
+            ShownHeader.Visibility = allGames.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
             RecommendedSection.Visibility = recommendedGames.Count > 0
                 ? Visibility.Visible
                 : Visibility.Collapsed;

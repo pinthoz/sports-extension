@@ -302,11 +302,18 @@
     flag: [".event__participantName .flag", ".flag"]
   };
 
+  // The Favorites page lists every favourite game: ones starred directly and
+  // games of favourite teams/players ("My teams"). The latter have no star on
+  // their row (the Timeline view shows none), so there the page itself is the
+  // proof. __favoritesPage lets tests force it.
+  const onFavoritesPage = window.__favoritesPage === true
+    || /\/favou?rites\//i.test(location.pathname);
+
   function scrapeNoDuelSections() {
     const games = [];
     for (const section of qa(document, NODUEL_SEL.section)) {
       // Starred on the event header or on any individual driver row.
-      if (!q(section, SEL.starActive)) continue;
+      if (!onFavoritesPage && !q(section, SEL.starActive)) continue;
 
       const rows = qa(section, NODUEL_SEL.row)
         .filter((r) => /^\d+\.?$/.test(text(r, NODUEL_SEL.rank)));
@@ -362,7 +369,7 @@
     const games = [];
     for (const match of qa(document, SEL.match)) {
       if (match.className.includes("--noDuel")) continue; // ranking rows, handled above
-      const starred = !!q(match, SEL.starActive);
+      const starred = onFavoritesPage || !!q(match, SEL.starActive);
       if (!starred && !includeUnstarred) continue;
 
       const stage = text(match, SEL.stage);

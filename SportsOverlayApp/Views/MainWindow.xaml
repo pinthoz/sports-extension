@@ -42,6 +42,30 @@
             <Setter Property="VerticalAlignment" Value="Center"/>
         </Style>
 
+        <!-- Rounded action button at the top of the ^ popup. -->
+        <Style x:Key="PopupAction" TargetType="Button">
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Focusable" Value="False"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" CornerRadius="6" Padding="10,5" Background="#1FFFFFFF"
+                                BorderBrush="#22FFFFFF" BorderThickness="1">
+                            <ContentPresenter VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#38FFFFFF"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#28FFFFFF"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <Style x:Key="FlatButton" TargetType="ButtonBase">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="Foreground" Value="#AAFFFFFF"/>
@@ -298,7 +322,26 @@
                IsOpen="{Binding IsChecked, ElementName=OverflowToggle, Mode=TwoWay}">
             <Border x:Name="PopupPill" Style="{StaticResource PillStyle}" Padding="10,8" Margin="0,0,0,4">
                 <StackPanel>
-                    <TextBlock Text="Shown on the bar:" FontSize="11" Foreground="#AAFFFFFF" Margin="0,0,0,6"/>
+                    <!-- Find more games without going through the tray icon. -->
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                        <Button Style="{StaticResource PopupAction}" Click="Search_Click"
+                                ToolTip="Search FlashScore for a team, player or competition, then star its games">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#xE721;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="12"
+                                           Foreground="White" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                <TextBlock Text="Search FlashScore" FontSize="12" Foreground="White" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource PopupAction}" Click="Browse_Click" Margin="6,0,0,0"
+                                ToolTip="Open FlashScore to browse any sport and star the games you want on the bar">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#xE734;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="12"
+                                           Foreground="White" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                <TextBlock Text="Browse &amp; star games" FontSize="12" Foreground="White" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                    <TextBlock x:Name="ShownHeader" Text="Shown on the bar:" FontSize="11" Foreground="#AAFFFFFF" Margin="0,0,0,6"/>
                     <ItemsControl x:Name="PickerList">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>

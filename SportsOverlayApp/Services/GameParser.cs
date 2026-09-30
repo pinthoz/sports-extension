@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
 using Newtonsoft.Json.Linq;
 using SportsOverlayApp.Models;
 
@@ -16,8 +17,8 @@ namespace SportsOverlayApp.Services
             var games = new List<GameData>();
             foreach (var g in array ?? new JArray())
             {
-                var home = g["home"]?.ToString() ?? "";
-                var away = g["away"]?.ToString() ?? "";
+                var home = StripWinnerMark(g["home"]?.ToString() ?? "");
+                var away = StripWinnerMark(g["away"]?.ToString() ?? "");
                 var homeScore = g["homeScore"]?.ToString() ?? "-";
                 var awayScore = g["awayScore"]?.ToString() ?? "-";
 
@@ -63,5 +64,12 @@ namespace SportsOverlayApp.Services
             }
             return games;
         }
+
+        // When a tennis match ends, FlashScore puts a small "SET" badge in the
+        // winner's name cell and its text gets glued to the name
+        // ("Djokovic N.SET"; in doubles possibly "Cabral F.SET / Tracy J.").
+        private static readonly Regex WinnerMark = new(@"(?<=\.)SET(?=\s*(/|$))");
+
+        public static string StripWinnerMark(string name) => WinnerMark.Replace(name, "");
     }
 }

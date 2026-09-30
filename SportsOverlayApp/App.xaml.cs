@@ -54,6 +54,8 @@ namespace SportsOverlayApp
             overlay = new MainWindow();
             overlay.ApplyUserPreferences(preferences);
             overlay.MatchRequested += id => _ = OpenMatchAsync(id);
+            overlay.BrowseRequested += OpenFlashScoreWindow;
+            overlay.SearchRequested += OpenFlashScoreSearch;
 
             // Show the last cached scores until fresh data arrives.
             var cached = CacheService.LoadGameData();
@@ -184,6 +186,14 @@ namespace SportsOverlayApp
             if (flashWindow == null)
                 await StartEmbeddedScraperAsync();
             flashWindow?.ShowForUser();
+        }
+
+        private async void OpenFlashScoreSearch()
+        {
+            if (flashWindow == null)
+                await StartEmbeddedScraperAsync();
+            if (flashWindow != null)
+                await flashWindow.OpenSearchAsync();
         }
 
         // Marks the bar as offline when the extension stops sending data

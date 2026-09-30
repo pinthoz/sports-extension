@@ -97,6 +97,28 @@ namespace SportsOverlayApp.Views
             }
         }
 
+        // Opens FlashScore's own search panel and puts the cursor in its box.
+        // FlashScore has no search URL; the header button opens the panel
+        // (button.searchIcon; #search-window on some layouts). Retries while
+        // the page is still loading.
+        private const string OpenSearchScript =
+            "(() => { let n = 0; const go = () => {" +
+            " const btn = document.querySelector('button.searchIcon') || document.querySelector('#search-window');" +
+            " if (!btn) { if (++n < 50) setTimeout(go, 100); return; }" +
+            " btn.click(); let m = 0;" +
+            " const focus = () => { const i = document.querySelector('input.searchInput__input');" +
+            " if (i) { i.focus(); return; } if (++m < 30) setTimeout(focus, 100); };" +
+            " focus(); }; go(); })()";
+
+        /// <summary>Shows the window with FlashScore's search open, ready to type.</summary>
+        public async Task OpenSearchAsync()
+        {
+            ShowForUser();
+            if (Browser.CoreWebView2 == null) return;
+            Browser.Focus(); // so typing goes to the page
+            await Browser.CoreWebView2.ExecuteScriptAsync(OpenSearchScript);
+        }
+
         public void ShowForUser()
         {
             ShowInTaskbar = true;
