@@ -60,9 +60,32 @@ namespace SportsOverlayApp.Services
                     gameData.Title = g["title"]?.ToString() ?? gameData.Title;
                     gameData.Score = gameData.Ranking[0].Time;
                 }
+                ApplyDay(gameData, g["day"]?.ToString() ?? "");
                 games.Add(gameData);
             }
             return games;
+        }
+
+        // A scheduled game's stage is its kick-off ("08:00"), sometimes with a
+        // marker glued on ("14:30FRO", result-only coverage).
+        private static readonly Regex KickOffStage = new(@"^(\d{1,2}):(\d{2})");
+
+        /// <summary>
+        /// Uses the day FlashScore groups the game under (Favorites page) to set
+        /// its kick-off and, when it isn't today, to put the day before the
+        /// time ("Tue 08:00"); otherwise a game days away reads as today's.
+        /// </summary>
+        private static void ApplyDay(GameData game, string day)
+        {
+            if (!DayLabel.TryParse(day, out var date)) return;
+            game.DayOffset = (date - DateTime.Today).Days;
+            if (game.IsLive || game.IsFinished) return;
+
+            var m = KickOffStage.Match(game.Time.Trim());
+            if (m.Success && int.Parse(m.Groups[1].Value) < 24 && int.Parse(m.Groups[2].Value) < 60)
+                game.KickOff = date.AddHours(int.Parse(m.Groups[1].Value)).AddMinutes(int.Parse(m.Groups[2].Value));
+            if (game.DayOffset != 0)
+                game.Time = $"{DayLabel.Prefix(date)} {game.Time}";
         }
 
         // When a tennis match ends, FlashScore puts a small "SET" badge in the

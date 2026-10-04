@@ -195,7 +195,7 @@ namespace SportsOverlayApp.Views
         private static List<GameData> LaterDay(List<GameData> games, int day, List<GameData>? today)
         {
             var seen = new HashSet<string>(today?.Select(g => g.Id) ?? Enumerable.Empty<string>());
-            var weekday = DateTime.Today.AddDays(day).ToString("ddd");
+            var weekday = DayLabel.Prefix(DateTime.Today.AddDays(day));
             var result = new List<GameData>();
             foreach (var g in games)
             {

@@ -362,6 +362,20 @@
     return games;
   }
 
+  // The Favorites page groups games under day headers ("Today - 04.10.",
+  // "Tuesday - 06.10.") and a row's own stage is only the kick-off time. Returns
+  // the "dd.MM" of the last header before the row, or "" (sport pages have none).
+  const dayHeaders = [...document.querySelectorAll(".myFs__dateInfo")];
+  function dayOf(match) {
+    let day = "";
+    for (const h of dayHeaders) {
+      if (!(h.compareDocumentPosition(match) & Node.DOCUMENT_POSITION_FOLLOWING)) break;
+      const m = h.textContent.match(/(\d{1,2})\.(\d{1,2})\./);
+      day = m ? `${m[1].padStart(2, "0")}.${m[2].padStart(2, "0")}` : "";
+    }
+    return day;
+  }
+
   // includeUnstarred=false (default): only starred games — what drives the
   // bar. =true ("discovery" mode, used by the recommendation browser on broad
   // sport pages): every duel game, each tagged with whether it is starred.
@@ -428,6 +442,7 @@
         isLive,
         isFinished,
         starred,
+        day: dayOf(match),
         competition: competitionFrom(headerEl)
       });
     }
