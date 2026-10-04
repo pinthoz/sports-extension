@@ -41,6 +41,10 @@ namespace SportsOverlayApp.Views
         // followed team isn't "not interesting"). Unlike `dismissed`, these are
         // never in the starred feed, so they aren't pruned against it.
         private readonly HashSet<string> dismissedCandidates = new();
+        // Recommendations the user liked (♥): moved out of the Recommended list
+        // into the bar's own list (allGames), where they behave like starred
+        // games. Not in the starred feed, so they're spared when it prunes.
+        private readonly HashSet<string> adopted = new();
         private List<GameData> lastCandidates = new();
         private readonly InterestTracker interests = new();
         private UserPreferences preferences = new();
@@ -331,14 +335,19 @@ namespace SportsOverlayApp.Views
         {
             var incomingIds = new HashSet<string>(data.Select(g => g.Id));
 
-            // Forget dismissals/picks for games that left the feed entirely.
-            dismissed.RemoveWhere(id => !incomingIds.Contains(id));
-            manualHidden.RemoveWhere(id => !incomingIds.Contains(id));
-            manualPicks.RemoveAll(id => !incomingIds.Contains(id));
+            // A liked recommendation that got starred is now an ordinary feed game.
+            adopted.ExceptWith(incomingIds);
+
+            // Forget dismissals/picks for games that left the feed entirely
+            // (liked recommendations were never in it, so they stay).
+            bool gone(string id) => !incomingIds.Contains(id) && !adopted.Contains(id);
+            dismissed.RemoveWhere(gone);
+            manualHidden.RemoveWhere(gone);
+            manualPicks.RemoveAll(gone);
 
             for (int i = allGames.Count - 1; i >= 0; i--)
             {
-                if (!incomingIds.Contains(allGames[i].Id))
+                if (gone(allGames[i].Id))
                     allGames.RemoveAt(i);
             }
 
@@ -431,6 +440,7 @@ namespace SportsOverlayApp.Views
             }
 
             lastCandidates = candidates;
+            SyncAdopted(candidates);
             var starredIds = new HashSet<string>(allGames.Select(g => g.Id));
             // Games of followed teams always qualify and come first; the rest
             // must clear the recommendation threshold. The bar only looks as
@@ -481,14 +491,80 @@ namespace SportsOverlayApp.Views
         }
 
         /// <summary>
+        /// Keeps liked recommendations on the bar's list: refreshes their scores,
+        /// re-adopts liked games seen again (likes outlive a restart, the list
+        /// doesn't), and drops those discovery no longer sees at all.
+        /// </summary>
+        private void SyncAdopted(List<GameData> candidates)
+        {
+            var byId = candidates.GroupBy(g => g.Id).ToDictionary(g => g.Key, g => g.First());
+            foreach (var id in adopted.ToList())
+            {
+                var chip = allGames.FirstOrDefault(c => c.Id == id);
+                if (chip == null) { adopted.Remove(id); continue; }
+                if (byId.TryGetValue(id, out var game))
+                    chip.Update(game);
+                else
+                {
+                    allGames.Remove(chip);
+                    adopted.Remove(id);
+                    manualPicks.Remove(id);
+                }
+            }
+
+            foreach (var game in candidates)
+            {
+                if (adopted.Contains(game.Id) || game.Starred || game.Ranking.Count > 0 || game.DayOffset > 1
+                    || dismissedCandidates.Contains(game.Id) || !interests.IsLiked(game.Id)
+                    || allGames.Any(c => c.Id == game.Id))
+                    continue;
+                var chip = GameChipVm.From(game);
+                chip.IsLiked = true;
+                Adopt(chip, front: false);
+            }
+        }
+
+        // Moves a recommendation onto the bar's list. A fresh ♥ goes to the
+        // front of the bar; re-adopted ones (after a restart) join the end.
+        private void Adopt(GameChipVm chip, bool front)
+        {
+            adopted.Add(chip.Id);
+            recommendedGames.Remove(chip);
+            chip.IsCandidate = false; // a bar game now: ✕ dismisses, it doesn't dislike
+            chip.IsRecommended = true;
+            if (!allGames.Contains(chip))
+                allGames.Add(chip);
+            manualHidden.Remove(chip.Id);
+            manualPicks.Remove(chip.Id);
+            if (front) manualPicks.Insert(0, chip.Id);
+            else manualPicks.Add(chip.Id);
+        }
+
+        // Undoes Adopt when the ♥ is taken back; the next discovery pass puts
+        // the game back under Recommended if it still qualifies.
+        private void Release(GameChipVm chip)
+        {
+            adopted.Remove(chip.Id);
+            allGames.Remove(chip);
+            manualPicks.Remove(chip.Id);
+            manualHidden.Remove(chip.Id);
+            chip.IsCandidate = true;
+            if (!recommendedGames.Contains(chip))
+                recommendedGames.Add(chip);
+        }
+
+        /// <summary>
         /// Decides which games are visible and on which side. User picks come
         /// first, then live games, then upcoming, then finished. It packs items
         /// into the left side, then the right.
         /// </summary>
         private void RefreshAssignments()
         {
+            // Picks can be starred games (ticked in the popup) or liked
+            // recommendations (♥), so look them up in both lists.
             var ordered = manualPicks
-                .Select(id => allGames.FirstOrDefault(g => g.Id == id))
+                .Select(id => allGames.FirstOrDefault(g => g.Id == id)
+                              ?? recommendedGames.FirstOrDefault(g => g.Id == id))
                 .Where(g => g != null)
                 .Cast<GameChipVm>()
                 .Concat(allGames
@@ -500,7 +576,7 @@ namespace SportsOverlayApp.Views
                 // Skip any that just became starred (still in both lists until
                 // the next discovery pass) so they never render twice.
                 .Concat(recommendedGames
-                    .Where(g => allGames.All(s => s.Id != g.Id))
+                    .Where(g => allGames.All(s => s.Id != g.Id) && !manualPicks.Contains(g.Id))
                     .OrderBy(g => g.IsLive ? 0 : 1))
                 .ToList();
 
@@ -570,6 +646,10 @@ namespace SportsOverlayApp.Views
                 return;
             }
 
+            // A liked recommendation closed with ✕ (e.g. once finished): keep it
+            // off for the session; its ♥ would otherwise bring it straight back.
+            if (adopted.Remove(chip.Id))
+                dismissedCandidates.Add(chip.Id);
             dismissed.Add(chip.Id);
             manualPicks.Remove(chip.Id);
             allGames.Remove(chip);
@@ -601,6 +681,14 @@ namespace SportsOverlayApp.Views
             if ((sender as FrameworkElement)?.DataContext is not GameChipVm chip) return;
             chip.IsLiked = interests.ToggleLike(chip.Id, chip.Sport, chip.Competition,
                 chip.FullHomeTeam, chip.FullAwayTeam);
+            // ♥ on a recommendation also means "show me this one": it moves to
+            // "Shown on the bar", ahead of the rest. Taking the ♥ back (from
+            // either list) returns it to Recommended.
+            if (chip.IsCandidate && chip.IsLiked)
+                Adopt(chip, front: true);
+            else if (adopted.Contains(chip.Id) && !chip.IsLiked)
+                Release(chip);
+            RefreshAssignments();
             e.Handled = true;
         }
     }

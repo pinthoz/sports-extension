@@ -365,6 +365,10 @@
                                               Foreground="White" VerticalAlignment="Center">
                                         <TextBlock Text="{Binding Summary}" FontSize="12"/>
                                     </CheckBox>
+                                    <Button Content="✕" Click="Dismiss_Click" Style="{StaticResource FlatButton}"
+                                            FontSize="11" Margin="6,0,0,0" VerticalAlignment="Center"
+                                            Foreground="#88FFFFFF"
+                                            ToolTip="Remove from the bar and this list (it stays starred on FlashScore)"/>
                                 </StackPanel>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
